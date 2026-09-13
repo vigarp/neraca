@@ -93,6 +93,20 @@ func TestAnalytics_BurnRateEndpoint(t *testing.T) {
 	rr = httptest.NewRecorder()
 	router.ServeHTTP(rr, req)
 
+	// Income dalam siklus = 5.000.000
+	incomePayload := fmt.Sprintf(`{
+		"account_id": %d,
+		"category_id": 16,
+		"amount": 5000000,
+		"type": "income",
+		"description": "Gaji Bulanan",
+		"transaction_date": "2026-08-26"
+	}`, bca.ID)
+	req = httptest.NewRequest(http.MethodPost, "/api/transactions", strings.NewReader(incomePayload))
+	req.Header.Set(headerContentType, mimeApplicationJSON)
+	rr = httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+
 	// 4. Panggil /api/analytics/burn-rate?date=2026-09-13
 	req = httptest.NewRequest(http.MethodGet, "/api/analytics/burn-rate?date=2026-09-13", nil)
 	rr = httptest.NewRecorder()
@@ -107,10 +121,15 @@ func TestAnalytics_BurnRateEndpoint(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	// Verifikasi Remain Funds: BCA mula-mula 4.800.000 - 500.000 = 4.300.000
+	// Verifikasi Remain Funds: BCA mula-mula 4.800.000 - 500.000 + 5.000.000 = 9.300.000
 	// Portofolio aset pasif 15.000.000 TIDAK boleh masuk ke remain funds!
-	if res.RemainFunds != 4300000 {
-		t.Fatalf("expected remain funds 4300000, got %f", res.RemainFunds)
+	if res.RemainFunds != 9300000 {
+		t.Fatalf("expected remain funds 9300000, got %f", res.RemainFunds)
+	}
+
+	// Verifikasi Cycle Income: 5.000.000
+	if res.CycleIncome != 5000000 {
+		t.Fatalf("expected cycle income 5000000, got %f", res.CycleIncome)
 	}
 
 	// Verifikasi Next Payday: 12 hari
@@ -123,8 +142,8 @@ func TestAnalytics_BurnRateEndpoint(t *testing.T) {
 		t.Fatalf("expected grand total expenses 500000, got %f", res.GrandTotalExpenses)
 	}
 
-	// Verifikasi Prospect Daily Limit: 4.300.000 / 12 = 358333.33
-	expectedDailyLimit := 358333.33
+	// Verifikasi Prospect Daily Limit: 9.300.000 / 12 = 775000
+	expectedDailyLimit := 775000.0
 	if res.ProspectDailyLimit != expectedDailyLimit {
 		t.Fatalf("expected prospect daily limit %f, got %f", expectedDailyLimit, res.ProspectDailyLimit)
 	}
@@ -132,5 +151,15 @@ func TestAnalytics_BurnRateEndpoint(t *testing.T) {
 	// Status burn rate harus safe
 	if res.BurnRateStatus != "safe" {
 		t.Fatalf("expected burn rate status 'safe', got %s", res.BurnRateStatus)
+	}
+
+	// Verifikasi transaction count pada category breakdown
+	if len(res.CategoryBreakdown) == 0 {
+		t.Fatalf("expected category breakdown not empty")
+	}
+	for _, cat := range res.CategoryBreakdown {
+		if cat.TransactionCount <= 0 {
+			t.Fatalf("expected transaction count > 0 for category %s, got %d", cat.Name, cat.TransactionCount)
+		}
 	}
 }

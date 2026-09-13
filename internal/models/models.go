@@ -150,13 +150,14 @@ type PillarBreakdown struct {
 }
 
 type CategoryExpenseBreakdown struct {
-	ID         int64   `json:"id"`
-	Name       string  `json:"name"`
-	Pillar     string  `json:"pillar"`
-	Icon       string  `json:"icon"`
-	Color      string  `json:"color"`
-	Total      float64 `json:"total"`
-	Percentage float64 `json:"percentage"`
+	ID               int64   `json:"id"`
+	Name             string  `json:"name"`
+	Pillar           string  `json:"pillar"`
+	Icon             string  `json:"icon"`
+	Color            string  `json:"color"`
+	Total            float64 `json:"total"`
+	Percentage       float64 `json:"percentage"`
+	TransactionCount int     `json:"transaction_count"`
 }
 
 type BurnRateAnalyticsResponse struct {
@@ -169,6 +170,7 @@ type BurnRateAnalyticsResponse struct {
 	ProspectDailyLimit  float64                    `json:"prospect_daily_limit"`
 	AverageDailyExpense float64                    `json:"average_daily_expense"`
 	BurnRateStatus      string                     `json:"burn_rate_status"` // 'safe', 'warning', 'danger'
+	CycleIncome         float64                    `json:"cycle_income"`
 	PillarBreakdown     PillarBreakdown            `json:"pillar_breakdown"`
 	CategoryBreakdown   []CategoryExpenseBreakdown `json:"category_breakdown"`
 }

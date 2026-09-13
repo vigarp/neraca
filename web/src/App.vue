@@ -20,6 +20,7 @@ import {
 } from '@lucide/vue'
 import AccountsView from './views/AccountsView.vue'
 import TransactionsView from './views/TransactionsView.vue'
+import BudgetsView from './views/BudgetsView.vue'
 
 const health = ref(null)
 const loading = ref(true)
@@ -36,6 +37,7 @@ const burnRate = ref({
   days_elapsed: 0,
   remain_funds: 0,
   grand_total_expenses: 0,
+  cycle_income: 0,
   prospect_daily_limit: 0,
   average_daily_expense: 0,
   burn_rate_status: 'safe',
@@ -621,8 +623,11 @@ const navTabs = [
                 >
               </li>
               <li class="flex items-start space-x-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 flex-shrink-0"></span>
-                <span><strong>Tahap 4:</strong> Visualisasi Dashboard Spreadsheet & Rekap.</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
+                <span
+                  ><strong class="text-emerald-700">Tahap 4 (Selesai):</strong> Alokasi Anggaran
+                  50-30-20 & Visualisasi Rekapitulasi Spreadsheet.</span
+                >
               </li>
             </ul>
           </div>
@@ -639,20 +644,9 @@ const navTabs = [
         <TransactionsView :format-rupiah="formatRupiah" @transaction-changed="refreshAll" />
       </template>
 
-      <!-- TAB 4: ANGGARAN 50-30-20 (TAHAP 3/4 PLACEHOLDER) -->
+      <!-- TAB 4: ANGGARAN 50-30-20 (TAHAP 4) -->
       <template v-else-if="activeTab === 'budgets'">
-        <div class="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-3">
-          <div
-            class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto"
-          >
-            <PieChart class="w-6 h-6" />
-          </div>
-          <h3 class="font-bold text-slate-800 text-lg">Modul Anggaran 50-30-20 (Tahap 3 & 4)</h3>
-          <p class="text-xs text-slate-500 max-w-md mx-auto">
-            Pembagian pilar anggaran 50% Pokok, 30% Pribadi, dan 20% Investasi akan
-            diimplementasikan pada tahap berikutnya.
-          </p>
-        </div>
+        <BudgetsView :burn-rate="burnRate" :format-rupiah="formatRupiah" @refresh="refreshAll" />
       </template>
     </main>
 

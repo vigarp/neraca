@@ -82,7 +82,8 @@ func fetchCycleExpenses(
 		COALESCE(c.pillar, 'needs') AS pillar,
 		COALESCE(c.icon, '') AS icon,
 		COALESCE(c.color, '') AS color,
-		SUM(t.amount) AS total
+		SUM(t.amount) AS total,
+		COUNT(t.id) AS transaction_count
 	FROM transactions t
 	LEFT JOIN categories c ON t.category_id = c.id
 	WHERE t.type = 'expense'
@@ -108,7 +109,7 @@ func fetchCycleExpenses(
 	for rows.Next() {
 		var item models.CategoryExpenseBreakdown
 		if err := rows.Scan(
-			&item.ID, &item.Name, &item.Pillar, &item.Icon, &item.Color, &item.Total,
+			&item.ID, &item.Name, &item.Pillar, &item.Icon, &item.Color, &item.Total, &item.TransactionCount,
 		); err != nil {
 			return 0, models.PillarBreakdown{}, nil, err
 		}
@@ -140,6 +141,19 @@ func fetchCycleExpenses(
 	return grandTotal, pillarBreakdown, categories, nil
 }
 
+func fetchCycleIncome(db *database.DB, startDate, endDate string) (float64, error) {
+	var total float64
+	query := `
+	SELECT COALESCE(SUM(amount), 0)
+	FROM transactions
+	WHERE type = 'income'
+	  AND transaction_date >= ?
+	  AND transaction_date < ?;
+	`
+	err := db.QueryRow(query, startDate, endDate).Scan(&total)
+	return total, err
+}
+
 func determineBurnRateStatus(avgExpense, dailyLimit float64) string {
 	if dailyLimit <= 0 || avgExpense <= dailyLimit {
 		return "safe"
@@ -150,15 +164,32 @@ func determineBurnRateStatus(avgExpense, dailyLimit float64) string {
 	return "danger"
 }
 
+func parseTargetDate(r *http.Request) time.Time {
+	if dateParam := r.URL.Query().Get("date"); dateParam != "" {
+		if t, err := time.Parse(time.DateOnly, dateParam); err == nil {
+			return t
+		}
+	}
+	return time.Now()
+}
+
+func calculateDailyLimit(remainFunds float64, daysRemain int) float64 {
+	if remainFunds <= 0 || daysRemain <= 0 {
+		return 0
+	}
+	return math.Round((remainFunds/float64(daysRemain))*100) / 100
+}
+
+func calculateAverageExpense(grandTotal float64, daysElapsed int) float64 {
+	if grandTotal <= 0 || daysElapsed <= 0 {
+		return 0
+	}
+	return math.Round((grandTotal/float64(daysElapsed))*100) / 100
+}
+
 func handleGetBurnRateAnalytics(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		now := time.Now()
-		if dateParam := r.URL.Query().Get("date"); dateParam != "" {
-			if t, err := time.Parse(time.DateOnly, dateParam); err == nil {
-				now = t
-			}
-		}
-
+		now := parseTargetDate(r)
 		paydayDay := fetchPaydaySetting(db)
 		cycleStart, nextPayday, daysRemain, daysElapsed := calculatePaydayCycle(now, paydayDay)
 
@@ -177,16 +208,14 @@ func handleGetBurnRateAnalytics(db *database.DB) http.HandlerFunc {
 			return
 		}
 
-		var prospectDailyLimit float64
-		if remainFunds > 0 && daysRemain > 0 {
-			prospectDailyLimit = math.Round((remainFunds/float64(daysRemain))*100) / 100
+		cycleIncome, err := fetchCycleIncome(db, startDateStr, endDateStr)
+		if err != nil && err != sql.ErrNoRows {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
-		var avgDailyExpense float64
-		if grandTotal > 0 && daysElapsed > 0 {
-			avgDailyExpense = math.Round((grandTotal/float64(daysElapsed))*100) / 100
-		}
-
+		prospectDailyLimit := calculateDailyLimit(remainFunds, daysRemain)
+		avgDailyExpense := calculateAverageExpense(grandTotal, daysElapsed)
 		status := determineBurnRateStatus(avgDailyExpense, prospectDailyLimit)
 
 		res := models.BurnRateAnalyticsResponse{
@@ -199,6 +228,7 @@ func handleGetBurnRateAnalytics(db *database.DB) http.HandlerFunc {
 			ProspectDailyLimit:  prospectDailyLimit,
 			AverageDailyExpense: avgDailyExpense,
 			BurnRateStatus:      status,
+			CycleIncome:         cycleIncome,
 			PillarBreakdown:     pillarBreakdown,
 			CategoryBreakdown:   categories,
 		}
@@ -206,4 +236,3 @@ func handleGetBurnRateAnalytics(db *database.DB) http.HandlerFunc {
 		writeJSON(w, http.StatusOK, res)
 	}
 }
-
