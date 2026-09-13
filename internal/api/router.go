@@ -63,6 +63,18 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 		// Settings (Payday date, monthly income)
 		api.Get("/settings", handleGetSettings(db))
 		api.Put("/settings", handleUpdateSettings(db))
+
+		// Categories (50-30-20 Framework)
+		api.Get("/categories", handleGetCategories(db))
+		api.Post("/categories", handleCreateCategory(db))
+		api.Put("/categories/{id}", handleUpdateCategory(db))
+		api.Delete("/categories/{id}", handleDeleteCategory(db))
+
+		// Transactions (Daily expense/income/transfer)
+		api.Get("/transactions", handleGetTransactions(db))
+		api.Post("/transactions", handleCreateTransaction(db))
+		api.Post("/transactions/transfer", handleCreateTransfer(db))
+		api.Delete("/transactions/{id}", handleDeleteTransaction(db))
 	})
 
 	// Static SPA Handler (jika ada embedded static files)

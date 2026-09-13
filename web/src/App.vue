@@ -15,6 +15,7 @@ import {
   WifiOff,
 } from '@lucide/vue'
 import AccountsView from './views/AccountsView.vue'
+import TransactionsView from './views/TransactionsView.vue'
 
 const health = ref(null)
 const loading = ref(true)
@@ -22,6 +23,8 @@ const error = ref(null)
 const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
 const activeTab = ref('dashboard')
 const netWorth = ref(0)
+const totalMonthlyExpense = ref(0)
+const totalMonthlyIncome = ref(0)
 
 const updateOnlineStatus = () => {
   isOnline.value = navigator.onLine
@@ -58,21 +61,35 @@ const fetchNetWorth = async () => {
   }
 }
 
+const fetchMonthlyTransactions = async () => {
+  try {
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    const res = await fetch(`/api/transactions?month=${currentMonth}`)
+    if (res.ok) {
+      const data = await res.json()
+      totalMonthlyExpense.value = data.total_expense || 0
+      totalMonthlyIncome.value = data.total_income || 0
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
 const switchTab = tabId => {
   activeTab.value = tabId
-  fetchNetWorth()
+  refreshAll()
 }
 
 const refreshAll = () => {
   checkHealth()
   fetchNetWorth()
+  fetchMonthlyTransactions()
 }
 
 onMounted(() => {
   window.addEventListener('online', updateOnlineStatus)
   window.addEventListener('offline', updateOnlineStatus)
-  checkHealth()
-  fetchNetWorth()
+  refreshAll()
 })
 
 onUnmounted(() => {
@@ -241,16 +258,16 @@ const navTabs = [
                 >Pemasukan</span
               >
               <div
-                class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"
+                class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"
               >
                 <ArrowDownLeft class="w-5 h-5" />
               </div>
             </div>
             <div>
               <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {{ formatRupiah(0) }}
+                {{ formatRupiah(totalMonthlyIncome) }}
               </div>
-              <p class="text-xs text-slate-500 mt-1">Belum ada transaksi pemasukan</p>
+              <p class="text-xs text-slate-500 mt-1">Total pemasukan bulan berjalan</p>
             </div>
           </div>
 
@@ -270,9 +287,9 @@ const navTabs = [
             </div>
             <div>
               <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {{ formatRupiah(0) }}
+                {{ formatRupiah(totalMonthlyExpense) }}
               </div>
-              <p class="text-xs text-slate-500 mt-1">Belum ada pengeluaran bulan ini</p>
+              <p class="text-xs text-slate-500 mt-1">Total pengeluaran bulan berjalan</p>
             </div>
           </div>
         </div>
@@ -326,10 +343,10 @@ const navTabs = [
                 >
               </li>
               <li class="flex items-start space-x-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 flex-shrink-0"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
                 <span
-                  ><strong>Tahap 2:</strong> Kategori 50-30-20 & Log Transaksi Harian (Pokok,
-                  Pribadi, Investasi).</span
+                  ><strong class="text-emerald-700">Tahap 2 (Selesai):</strong> Kategori 50-30-20 &
+                  Log Transaksi Harian (Pokok, Pribadi, Investasi).</span
                 >
               </li>
               <li class="flex items-start space-x-2">
@@ -350,23 +367,12 @@ const navTabs = [
 
       <!-- TAB 2: ACCOUNTS / DOMPET & WEALTH VIEW -->
       <template v-else-if="activeTab === 'accounts'">
-        <AccountsView :format-rupiah="formatRupiah" />
+        <AccountsView :format-rupiah="formatRupiah" @account-updated="refreshAll" />
       </template>
 
-      <!-- TAB 3: TRANSAKSI (TAHAP 2 PLACEHOLDER) -->
+      <!-- TAB 3: TRANSAKSI (TAHAP 2) -->
       <template v-else-if="activeTab === 'transactions'">
-        <div class="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-3">
-          <div
-            class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto"
-          >
-            <ArrowLeftRight class="w-6 h-6" />
-          </div>
-          <h3 class="font-bold text-slate-800 text-lg">Modul Transaksi (Tahap 2)</h3>
-          <p class="text-xs text-slate-500 max-w-md mx-auto">
-            Fitur pencatatan pengeluaran harian, pemasukan gaji, dan transfer antar-akun akan kita
-            bangun di <strong>Tahap 2</strong>.
-          </p>
-        </div>
+        <TransactionsView :format-rupiah="formatRupiah" @transaction-changed="refreshAll" />
       </template>
 
       <!-- TAB 4: ANGGARAN 50-30-20 (TAHAP 3/4 PLACEHOLDER) -->

@@ -110,6 +110,11 @@ func (db *DB) initSchema() error {
 	_ = db.addColumnIfNotExists("accounts", "institution", "TEXT DEFAULT ''")
 	_ = db.addColumnIfNotExists("accounts", "is_active", "INTEGER NOT NULL DEFAULT 1")
 	_ = db.addColumnIfNotExists("categories", "pillar", "TEXT NOT NULL DEFAULT 'needs'")
+	_ = db.addColumnIfNotExists("transactions", "to_account_id", "INTEGER REFERENCES accounts(id) ON DELETE SET NULL")
+
+	if err := db.seedDefaultCategories(); err != nil {
+		log.Printf("Warning: failed to seed default categories: %v", err)
+	}
 
 	return nil
 }
@@ -118,4 +123,73 @@ func (db *DB) addColumnIfNotExists(table, column, colDef string) error {
 	query := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s;", table, column, colDef)
 	_, err := db.Exec(query)
 	return err
+}
+
+func (db *DB) seedDefaultCategories() error {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM categories").Scan(&count)
+	if err != nil || count > 0 {
+		return err
+	}
+
+	const (
+		colorNeeds   = "#3B82F6"
+		colorWants   = "#A855F7"
+		colorEmerald = "#10B981"
+	)
+
+	categories := []struct {
+		name   string
+		cType  string
+		pillar string
+		icon   string
+		color  string
+	}{
+		// Needs (50% Kebutuhan Pokok)
+		{"Makan & Minum", "expense", "needs", "Utensils", colorNeeds},
+		{"Transportasi & Bensin", "expense", "needs", "Car", colorNeeds},
+		{"Tagihan & Utilitas", "expense", "needs", "Zap", colorNeeds},
+		{"Tempat Tinggal / Kos", "expense", "needs", "Home", colorNeeds},
+		{"Belanja Kebutuhan Pokok", "expense", "needs", "ShoppingBag", colorNeeds},
+		{"Kesehatan & Obat", "expense", "needs", "HeartPulse", colorNeeds},
+
+		// Wants (30% Gaya Hidup & Keinginan)
+		{"Hiburan & Hobi", "expense", "wants", "Gamepad2", colorWants},
+		{"Jajan & Kopi", "expense", "wants", "Coffee", colorWants},
+		{"Belanja Pribadi", "expense", "wants", "Shirt", colorWants},
+		{"Kuliner & Hangout", "expense", "wants", "Pizza", colorWants},
+		{"Langganan Digital", "expense", "wants", "Tv", colorWants},
+
+		// Savings (20% Tabungan & Investasi)
+		{"Tabungan Pokok", "expense", "savings", "PiggyBank", colorEmerald},
+		{"Dana Darurat", "expense", "savings", "ShieldAlert", colorEmerald},
+		{"Investasi Reksadana", "expense", "savings", "TrendingUp", colorEmerald},
+		{"Investasi Saham / Emas", "expense", "savings", "Coins", colorEmerald},
+
+		// Income (Pemasukan)
+		{"Gaji / Penghasilan", "income", "income", "Briefcase", colorEmerald},
+		{"Bonus & THR", "income", "income", "Gift", colorEmerald},
+		{"Hasil Investasi / Dividen", "income", "income", "ArrowUpRight", colorEmerald},
+		{"Pendapatan Lain-lain", "income", "income", "PlusCircle", colorEmerald},
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare("INSERT INTO categories (name, type, pillar, icon, color) VALUES (?, ?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, c := range categories {
+		if _, err := stmt.Exec(c.name, c.cType, c.pillar, c.icon, c.color); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
