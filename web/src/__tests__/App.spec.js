@@ -7,6 +7,17 @@ describe('App.vue', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(url => {
+        if (url.includes('/api/auth/status')) {
+          return Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                initialized: true,
+                authenticated: true,
+                username: 'vigarp',
+              }),
+          })
+        }
         if (url.includes('/api/health')) {
           return Promise.resolve({
             ok: true,
@@ -72,12 +83,14 @@ describe('App.vue', () => {
 
   it('merender judul aplikasi dengan benar', async () => {
     const wrapper = mount(App)
+    await flushPromises()
     expect(wrapper.text()).toContain('Neraca')
     expect(wrapper.text()).toContain('Personal Financial Dashboard')
   })
 
   it('merender navigasi mobile dan desktop dengan tab lengkap', async () => {
     const wrapper = mount(App)
+    await flushPromises()
     expect(wrapper.text()).toContain('Dashboard')
     expect(wrapper.text()).toContain('Transaksi')
     expect(wrapper.text()).toContain('Dompet')
@@ -94,12 +107,14 @@ describe('App.vue', () => {
 
   it('merender overview metric card dengan format Rupiah', async () => {
     const wrapper = mount(App)
+    await flushPromises()
     expect(wrapper.text()).toContain('Total Net Worth')
     expect(wrapper.text()).toContain('Rp')
   })
 
   it('merender metrik hitung mundur gajian dan prospect daily limit', async () => {
     const wrapper = mount(App)
+    await flushPromises()
     expect(wrapper.text()).toContain('Next Payday Remain')
     expect(wrapper.text()).toContain('Prospect Daily Limit')
     expect(wrapper.text()).toContain('Average Daily Expense')

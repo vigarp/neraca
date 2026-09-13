@@ -14,10 +14,22 @@ import (
 	"neraca/internal/models"
 )
 
-func setupTestRouter(t *testing.T) (http.Handler, *database.DB) {
+type authTestWrapper struct {
+	handler http.Handler
+	cookie  *http.Cookie
+}
+
+func (w *authTestWrapper) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	if _, err := req.Cookie(cookieSessionName); err != nil {
+		req.AddCookie(w.cookie)
+	}
+	w.handler.ServeHTTP(rw, req)
+}
+
+func setupCleanTestRouter(t *testing.T) (http.Handler, *database.DB) {
 	t.Helper()
 	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "test_accounts.db")
+	dbPath := filepath.Join(tempDir, "test_neraca.db")
 
 	db, err := database.Connect(dbPath)
 	if err != nil {
@@ -32,6 +44,38 @@ func setupTestRouter(t *testing.T) (http.Handler, *database.DB) {
 
 	router := NewRouter(cfg, db, nil)
 	return router, db
+}
+
+func setupTestRouter(t *testing.T) (http.Handler, *database.DB) {
+	t.Helper()
+	router, db := setupCleanTestRouter(t)
+
+	res, err := db.Exec(
+		"INSERT INTO users (username, password_hash) VALUES (?, ?);",
+		"testadmin", "$2a$10$7EqJtq98hPqEX7fNZaFWoOZhB4J8Q3qNnJ3eL4w5g6h7i8j9k0l1m",
+	)
+	if err != nil {
+		t.Fatalf("failed to seed test user: %v", err)
+	}
+	userID, _ := res.LastInsertId()
+
+	rawToken, tokenHash, _ := generateSecureToken()
+	expiresAt := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+	_, err = db.Exec(
+		"INSERT INTO sessions (user_id, token_hash, user_agent, ip_address, expires_at) VALUES (?, ?, ?, ?, ?);",
+		userID, tokenHash, "TestAgent", "127.0.0.1", expiresAt,
+	)
+	if err != nil {
+		t.Fatalf("failed to seed test session: %v", err)
+	}
+
+	cookie := &http.Cookie{
+		Name:  cookieSessionName,
+		Value: rawToken,
+		Path:  "/",
+	}
+
+	return &authTestWrapper{handler: router, cookie: cookie}, db
 }
 
 func TestAccounts_CRUDAndRevaluation(t *testing.T) {

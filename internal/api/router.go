@@ -53,31 +53,42 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/health", handleHealth(db))
 
-		// Accounts & Wealth Management
-		api.Get("/accounts", handleGetAccounts(db))
-		api.Post("/accounts", handleCreateAccount(db))
-		api.Put("/accounts/{id}", handleUpdateAccount(db))
-		api.Delete("/accounts/{id}", handleDeleteAccount(db))
-		api.Post("/accounts/{id}/revalue", handleRevalueAccount(db))
+		// Public Auth Endpoints
+		api.Get("/auth/status", handleAuthStatus(db))
+		api.Post("/auth/setup", handleAuthSetup(db))
+		api.Post("/auth/login", handleAuthLogin(db))
+		api.Post("/auth/logout", handleAuthLogout(db))
 
-		// Settings (Payday date, monthly income)
-		api.Get("/settings", handleGetSettings(db))
-		api.Put("/settings", handleUpdateSettings(db))
+		// Protected Financial Routes (Membutuhkan Cookie Sesi Aktif)
+		api.Group(func(protected chi.Router) {
+			protected.Use(authMiddleware(db))
 
-		// Categories (50-30-20 Framework)
-		api.Get("/categories", handleGetCategories(db))
-		api.Post("/categories", handleCreateCategory(db))
-		api.Put("/categories/{id}", handleUpdateCategory(db))
-		api.Delete("/categories/{id}", handleDeleteCategory(db))
+			// Accounts & Wealth Management
+			protected.Get("/accounts", handleGetAccounts(db))
+			protected.Post("/accounts", handleCreateAccount(db))
+			protected.Put("/accounts/{id}", handleUpdateAccount(db))
+			protected.Delete("/accounts/{id}", handleDeleteAccount(db))
+			protected.Post("/accounts/{id}/revalue", handleRevalueAccount(db))
 
-		// Transactions (Daily expense/income/transfer)
-		api.Get("/transactions", handleGetTransactions(db))
-		api.Post("/transactions", handleCreateTransaction(db))
-		api.Post("/transactions/transfer", handleCreateTransfer(db))
-		api.Delete("/transactions/{id}", handleDeleteTransaction(db))
+			// Settings (Payday date, monthly income)
+			protected.Get("/settings", handleGetSettings(db))
+			protected.Put("/settings", handleUpdateSettings(db))
 
-		// Analytics (Payday countdown, prospect daily limit, burn rate)
-		api.Get("/analytics/burn-rate", handleGetBurnRateAnalytics(db))
+			// Categories (50-30-20 Framework)
+			protected.Get("/categories", handleGetCategories(db))
+			protected.Post("/categories", handleCreateCategory(db))
+			protected.Put("/categories/{id}", handleUpdateCategory(db))
+			protected.Delete("/categories/{id}", handleDeleteCategory(db))
+
+			// Transactions (Daily expense/income/transfer)
+			protected.Get("/transactions", handleGetTransactions(db))
+			protected.Post("/transactions", handleCreateTransaction(db))
+			protected.Post("/transactions/transfer", handleCreateTransfer(db))
+			protected.Delete("/transactions/{id}", handleDeleteTransaction(db))
+
+			// Analytics (Payday countdown, prospect daily limit, burn rate)
+			protected.Get("/analytics/burn-rate", handleGetBurnRateAnalytics(db))
+		})
 	})
 
 	// Static SPA Handler (jika ada embedded static files)

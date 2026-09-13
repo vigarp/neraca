@@ -174,3 +174,29 @@ type BurnRateAnalyticsResponse struct {
 	PillarBreakdown     PillarBreakdown            `json:"pillar_breakdown"`
 	CategoryBreakdown   []CategoryExpenseBreakdown `json:"category_breakdown"`
 }
+
+type User struct {
+	ID           int64     `json:"id"`
+	Username     string    `json:"username"`
+	PasswordHash string    `json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type SetupAccountRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginRequest struct {
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	RememberMe bool   `json:"remember_me"`
+}
+
+type AuthStatusResponse struct {
+	Initialized   bool   `json:"initialized"`
+	Authenticated bool   `json:"authenticated"`
+	Username      string `json:"username,omitempty"`
+}
+

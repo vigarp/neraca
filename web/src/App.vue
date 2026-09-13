@@ -17,10 +17,21 @@ import {
   Calendar,
   Flame,
   ShieldAlert,
+  LogOut,
+  User,
 } from '@lucide/vue'
 import AccountsView from './views/AccountsView.vue'
 import TransactionsView from './views/TransactionsView.vue'
 import BudgetsView from './views/BudgetsView.vue'
+import LoginView from './views/LoginView.vue'
+import SetupView from './views/SetupView.vue'
+
+const authStatus = ref({
+  initialized: true,
+  authenticated: false,
+  username: '',
+})
+const authChecking = ref(true)
 
 const health = ref(null)
 const loading = ref(true)
@@ -72,9 +83,49 @@ const checkHealth = async () => {
   }
 }
 
+const checkAuthStatus = async () => {
+  authChecking.value = true
+  try {
+    const res = await fetch('/api/auth/status')
+    if (res.ok) {
+      const data = await res.json()
+      authStatus.value = data
+      if (data.authenticated) {
+        refreshAll()
+      }
+    }
+  } catch (err) {
+    console.error('Gagal memeriksa autentikasi:', err)
+  } finally {
+    authChecking.value = false
+  }
+}
+
+const handleAuthSuccess = username => {
+  authStatus.value.initialized = true
+  authStatus.value.authenticated = true
+  authStatus.value.username = username
+  refreshAll()
+}
+
+const handleLogout = async () => {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST' })
+  } catch (err) {
+    console.error('Logout error:', err)
+  } finally {
+    authStatus.value.authenticated = false
+    authStatus.value.username = ''
+  }
+}
+
 const fetchNetWorth = async () => {
   try {
     const res = await fetch('/api/accounts')
+    if (res.status === 401) {
+      authStatus.value.authenticated = false
+      return
+    }
     if (res.ok) {
       const data = await res.json()
       netWorth.value = data.total_net_worth || 0
@@ -88,6 +139,10 @@ const fetchMonthlyTransactions = async () => {
   try {
     const currentMonth = new Date().toISOString().slice(0, 7)
     const res = await fetch(`/api/transactions?month=${currentMonth}`)
+    if (res.status === 401) {
+      authStatus.value.authenticated = false
+      return
+    }
     if (res.ok) {
       const data = await res.json()
       totalMonthlyExpense.value = data.total_expense || 0
@@ -101,6 +156,10 @@ const fetchMonthlyTransactions = async () => {
 const fetchBurnRate = async () => {
   try {
     const res = await fetch('/api/analytics/burn-rate')
+    if (res.status === 401) {
+      authStatus.value.authenticated = false
+      return
+    }
     if (res.ok) {
       const data = await res.json()
       if (data && data.pillar_breakdown) {
@@ -144,7 +203,7 @@ const refreshAll = () => {
 onMounted(() => {
   window.addEventListener('online', updateOnlineStatus)
   window.addEventListener('offline', updateOnlineStatus)
-  refreshAll()
+  checkAuthStatus()
 })
 
 onUnmounted(() => {
@@ -171,7 +230,27 @@ const navTabs = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 flex flex-col text-slate-800">
+  <!-- Loading Checking Auth State -->
+  <div
+    v-if="authChecking"
+    class="min-h-screen bg-slate-50 flex flex-col items-center justify-center space-y-3"
+  >
+    <div
+      class="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-200 animate-pulse"
+    >
+      <PiggyBank class="w-7 h-7" />
+    </div>
+    <span class="text-xs font-semibold text-slate-500">Memeriksa Sesi Neraca...</span>
+  </div>
+
+  <!-- Screen Setup Akun Pertama -->
+  <SetupView v-else-if="!authStatus.initialized" @setup-success="handleAuthSuccess" />
+
+  <!-- Screen Login -->
+  <LoginView v-else-if="!authStatus.authenticated" @login-success="handleAuthSuccess" />
+
+  <!-- Main App Shell -->
+  <div v-else class="min-h-screen bg-slate-50 flex flex-col text-slate-800">
     <!-- Offline Alert Banner -->
     <div
       v-if="!isOnline"
@@ -247,6 +326,25 @@ const navTabs = [
           >
             <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
           </button>
+
+          <!-- User Info & Logout Button -->
+          <div class="flex items-center space-x-1 sm:space-x-2 pl-2 border-l border-slate-200">
+            <div
+              class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold"
+            >
+              <User class="w-3.5 h-3.5 text-slate-500" />
+              <span>{{ authStatus.username || 'Pengguna' }}</span>
+            </div>
+            <button
+              type="button"
+              aria-label="Logout dari akun"
+              title="Keluar / Logout"
+              class="p-2.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+              @click="handleLogout"
+            >
+              <LogOut class="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </header>
