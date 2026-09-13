@@ -1,16 +1,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { 
-  Wallet, 
-  ArrowDownLeft, 
-  ArrowUpRight, 
-  Activity, 
-  CreditCard, 
-  PlusCircle, 
-  CheckCircle2, 
+import {
+  Wallet,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Activity,
+  CheckCircle2,
   AlertCircle,
   PiggyBank,
-  RefreshCw
+  RefreshCw,
 } from '@lucide/vue'
 
 const health = ref(null)
@@ -36,12 +34,12 @@ onMounted(() => {
 })
 
 // Format Rupiah helper
-const formatRupiah = (val) => {
+const formatRupiah = val => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   }).format(val)
 }
 </script>
@@ -52,7 +50,9 @@ const formatRupiah = (val) => {
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-200">
+          <div
+            class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-200"
+          >
             <PiggyBank class="w-6 h-6" />
           </div>
           <div>
@@ -63,7 +63,7 @@ const formatRupiah = (val) => {
 
         <!-- Health / Server Status Badge -->
         <div class="flex items-center space-x-3">
-          <div 
+          <div
             v-if="health && health.status === 'ok'"
             class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
           >
@@ -71,7 +71,7 @@ const formatRupiah = (val) => {
             <span>Server Online (SQLite WAL)</span>
           </div>
 
-          <div 
+          <div
             v-else-if="error"
             class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"
           >
@@ -79,11 +79,11 @@ const formatRupiah = (val) => {
             <span>Terputus: {{ error }}</span>
           </div>
 
-          <button 
-            @click="checkHealth" 
+          <button
             :disabled="loading"
             title="Cek Status Server"
             class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
+            @click="checkHealth"
           >
             <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
           </button>
@@ -93,16 +93,20 @@ const formatRupiah = (val) => {
 
     <!-- Main Content -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
       <!-- Welcome & Action Banner -->
-      <div class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+      <div
+        class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden"
+      >
         <div class="relative z-10 max-w-2xl space-y-2">
-          <span class="inline-block px-3 py-0.5 rounded-full bg-emerald-600/60 text-emerald-100 text-xs font-medium tracking-wide uppercase">
+          <span
+            class="inline-block px-3 py-0.5 rounded-full bg-emerald-600/60 text-emerald-100 text-xs font-medium tracking-wide uppercase"
+          >
             Pondasi Siap
           </span>
           <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Selamat Datang di Neraca</h2>
           <p class="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
-            Struktur sistem Go + SQLite + Vue 3 berhasil diinisialisasi. Server backend dan database SQLite siap untuk tahap pengembangan fitur finansial Anda.
+            Struktur sistem Go + SQLite + Vue 3 berhasil diinisialisasi. Server backend dan database
+            SQLite siap untuk tahap pengembangan fitur finansial Anda.
           </p>
         </div>
         <div class="absolute -right-8 -bottom-10 opacity-10 pointer-events-none">
@@ -115,13 +119,19 @@ const formatRupiah = (val) => {
         <!-- Total Net Worth -->
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Saldo (Net Worth)</span>
-            <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >Total Saldo (Net Worth)</span
+            >
+            <div
+              class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"
+            >
               <Wallet class="w-5 h-5" />
             </div>
           </div>
           <div>
-            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">{{ formatRupiah(0) }}</div>
+            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {{ formatRupiah(0) }}
+            </div>
             <p class="text-xs text-slate-500 mt-1">Akumulasi dari seluruh kantong/rekening</p>
           </div>
         </div>
@@ -129,13 +139,19 @@ const formatRupiah = (val) => {
         <!-- Pemasukan Bulan Ini -->
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Pemasukan Bulan Ini</span>
-            <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >Pemasukan Bulan Ini</span
+            >
+            <div
+              class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"
+            >
               <ArrowDownLeft class="w-5 h-5" />
             </div>
           </div>
           <div>
-            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">{{ formatRupiah(0) }}</div>
+            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {{ formatRupiah(0) }}
+            </div>
             <p class="text-xs text-slate-500 mt-1">Belum ada transaksi pemasukan</p>
           </div>
         </div>
@@ -143,13 +159,19 @@ const formatRupiah = (val) => {
         <!-- Pengeluaran Bulan Ini -->
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Pengeluaran Bulan Ini</span>
-            <div class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
+              >Pengeluaran Bulan Ini</span
+            >
+            <div
+              class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"
+            >
               <ArrowUpRight class="w-5 h-5" />
             </div>
           </div>
           <div>
-            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">{{ formatRupiah(0) }}</div>
+            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">
+              {{ formatRupiah(0) }}
+            </div>
             <p class="text-xs text-slate-500 mt-1">Belum ada transaksi pengeluaran</p>
           </div>
         </div>
@@ -178,7 +200,10 @@ const formatRupiah = (val) => {
             </div>
             <div class="flex items-center justify-between py-2">
               <span class="text-slate-500">Status API Endpoint</span>
-              <span v-if="health" class="font-mono text-xs px-2 py-1 rounded bg-slate-100 text-slate-700">
+              <span
+                v-if="health"
+                class="font-mono text-xs px-2 py-1 rounded bg-slate-100 text-slate-700"
+              >
                 DB: {{ health.database }} | OK
               </span>
               <span v-else class="text-xs text-amber-600">Menghubungkan...</span>
@@ -195,15 +220,24 @@ const formatRupiah = (val) => {
           <ul class="space-y-2.5 text-sm text-slate-600">
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span><strong>Akun & Dompet:</strong> Manajemen rekening (BCA, Mandiri, Jago, GoPay, Tunai, dsb).</span>
+              <span
+                ><strong>Akun & Dompet:</strong> Manajemen rekening (BCA, Mandiri, Jago, GoPay,
+                Tunai, dsb).</span
+              >
             </li>
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span><strong>Transaksi:</strong> Form catat pemasukan, pengeluaran, dan transfer antar akun.</span>
+              <span
+                ><strong>Transaksi:</strong> Form catat pemasukan, pengeluaran, dan transfer antar
+                akun.</span
+              >
             </li>
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span><strong>Kategori & Budget:</strong> Pengelompokan pos pengeluaran & monitoring batas bulanan.</span>
+              <span
+                ><strong>Kategori & Budget:</strong> Pengelompokan pos pengeluaran & monitoring
+                batas bulanan.</span
+              >
             </li>
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
@@ -212,7 +246,6 @@ const formatRupiah = (val) => {
           </ul>
         </div>
       </div>
-
     </main>
 
     <!-- Footer -->

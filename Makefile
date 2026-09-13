@@ -1,10 +1,14 @@
-.PHONY: all dev-backend dev-frontend build build-frontend build-backend run docker-build docker-up docker-down clean
+.PHONY: all dev-backend dev-frontend build build-frontend build-backend run \
+        test-backend test-frontend test \
+        lint-backend lint-frontend lint \
+        format-backend format-frontend format format-check \
+        docker-build docker-up docker-down clean
 
 # Environment setup
 GOPATH ?= /usr/local/go/bin
 PATH := $(GOPATH):$(PATH)
 
-all: build
+all: lint test build
 
 # Menjalankan backend Go (dengan auto reload jika ada air, atau go run biasa)
 dev-backend:
@@ -13,6 +17,42 @@ dev-backend:
 # Menjalankan Vite dev server untuk frontend (HMR di port 5173)
 dev-frontend:
 	cd web && npm run dev
+
+# Package list excluding node_modules
+PKGS = $$(go list ./... | grep -v '/node_modules/')
+
+# Testing
+test-backend:
+	go test -v -race $(PKGS)
+
+test-frontend:
+	cd web && npm run test
+
+test: test-backend test-frontend
+
+# Linting & Static Analysis
+lint-backend:
+	go vet $(PKGS)
+
+lint-frontend:
+	cd web && npm run lint
+
+lint: lint-backend lint-frontend
+
+# Formatting
+format-backend:
+	gofmt -w -s .
+
+format-frontend:
+	cd web && npm run format
+
+format: format-backend format-frontend
+
+format-check:
+	@echo "Checking Go formatting..."
+	@test -z "$$(gofmt -s -l . | grep -v 'web/dist' | tee /dev/stderr)"
+	@echo "Checking Frontend formatting..."
+	cd web && npm run format:check
 
 # Build frontend Vue ke folder web/dist
 build-frontend:
