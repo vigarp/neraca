@@ -68,6 +68,10 @@ describe('BudgetsView.vue', () => {
     expect(wrapper.text()).toContain('Rp 1.800.000')
     expect(wrapper.text()).toContain('20% Tabungan & Investasi')
     expect(wrapper.text()).toContain('Rp 1.200.000')
+
+    // Total Sisa Dana = 2.000.000 + 1.300.000 + 927.000 = 4.227.000
+    expect(wrapper.text()).toContain('Total Sisa Dana (Remain Funds)')
+    expect(wrapper.text()).toContain('Rp 4.227.000')
   })
 
   it('merender 3 kolom rincian per pilar ala spreadsheet beserta sisa dana', () => {

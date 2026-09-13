@@ -99,6 +99,15 @@ const remainNeeds = computed(() => targetNeeds.value - actualNeeds.value)
 const remainWants = computed(() => targetWants.value - actualWants.value)
 const remainSavings = computed(() => targetSavings.value - actualSavings.value)
 
+// Total Sisa Dana Anggaran (Termasuk sisa tabungan jika belum dialokasikan)
+const totalRemainBudget = computed(() => {
+  return (
+    Math.max(0, remainNeeds.value) +
+    Math.max(0, remainWants.value) +
+    Math.max(0, remainSavings.value)
+  )
+})
+
 // Persentase Serapan per Pilar terhadap Target Ideal
 const percentNeeds = computed(() => {
   if (targetNeeds.value <= 0) return 0
@@ -565,9 +574,12 @@ const chartSegments = computed(() => {
         <div
           class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-xs text-slate-500 flex items-center justify-between"
         >
-          <span>Total Sisa Dana Belanja yang Boleh Dipakai:</span>
+          <div>
+            <span class="font-medium text-slate-700">Total Sisa Dana (Remain Funds):</span>
+            <span class="block text-[11px] text-slate-400">Needs + Wants + Sisa Tabungan</span>
+          </div>
           <span class="font-extrabold text-slate-900 text-sm">
-            {{ formatRupiah(Math.max(0, remainNeeds) + Math.max(0, remainWants)) }}
+            {{ formatRupiah(totalRemainBudget) }}
           </span>
         </div>
       </div>
