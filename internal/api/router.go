@@ -2,6 +2,7 @@ package api
 
 import (
 	"io/fs"
+	"mime"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,10 @@ import (
 	"neraca/internal/config"
 	"neraca/internal/database"
 )
+
+func init() {
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
 
 func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler {
 	r := chi.NewRouter()

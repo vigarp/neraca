@@ -69,4 +69,3 @@ func TestDatabase_InsertAndQuery(t *testing.T) {
 		t.Errorf("account data mismatch: got (%s, %s, %f)", name, accType, balance)
 	}
 }
-

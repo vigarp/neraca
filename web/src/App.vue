@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import {
   Wallet,
   ArrowDownLeft,
@@ -9,13 +9,28 @@ import {
   AlertCircle,
   PiggyBank,
   RefreshCw,
+  LayoutDashboard,
+  ArrowLeftRight,
+  PieChart,
+  WifiOff,
 } from '@lucide/vue'
 
 const health = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
+const activeTab = ref('dashboard')
+
+const updateOnlineStatus = () => {
+  isOnline.value = navigator.onLine
+}
 
 const checkHealth = async () => {
+  if (!navigator.onLine) {
+    error.value = 'Tidak ada koneksi internet'
+    loading.value = false
+    return
+  }
   loading.value = true
   error.value = null
   try {
@@ -30,7 +45,14 @@ const checkHealth = async () => {
 }
 
 onMounted(() => {
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
   checkHealth()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
 })
 
 // Format Rupiah helper
@@ -42,47 +64,85 @@ const formatRupiah = val => {
     maximumFractionDigits: 0,
   }).format(val)
 }
+
+const navTabs = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'transactions', label: 'Transaksi', icon: ArrowLeftRight },
+  { id: 'accounts', label: 'Dompet', icon: Wallet },
+  { id: 'budgets', label: 'Anggaran', icon: PieChart },
+]
 </script>
 
 <template>
   <div class="min-h-screen bg-slate-50 flex flex-col text-slate-800">
-    <!-- Navbar -->
+    <!-- Offline Alert Banner -->
+    <div
+      v-if="!isOnline"
+      class="bg-amber-500 text-white text-xs font-semibold px-4 py-2 flex items-center justify-center space-x-2 sticky top-0 z-50 shadow-sm"
+    >
+      <WifiOff class="w-4 h-4 animate-bounce" />
+      <span>Mode Offline — Anda sedang offline. Fitur PWA tetap dapat dibuka.</span>
+    </div>
+
+    <!-- Header Navbar -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div class="flex items-center space-x-3">
           <div
-            class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-200"
+            class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-200 flex-shrink-0"
           >
             <PiggyBank class="w-6 h-6" />
           </div>
           <div>
             <h1 class="text-xl font-bold tracking-tight text-slate-900 leading-tight">Neraca</h1>
-            <p class="text-xs text-slate-500 font-medium">Personal Financial Dashboard</p>
+            <p class="text-xs text-slate-500 font-medium hidden sm:block">
+              Personal Financial Dashboard
+            </p>
           </div>
         </div>
 
-        <!-- Health / Server Status Badge -->
-        <div class="flex items-center space-x-3">
+        <!-- Desktop Navigation Links -->
+        <nav aria-label="Navigasi Utama" class="hidden md:flex items-center space-x-1">
+          <button
+            v-for="tab in navTabs"
+            :key="tab.id"
+            :class="[
+              activeTab === tab.id
+                ? 'bg-emerald-50 text-emerald-700 font-semibold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium',
+            ]"
+            class="px-3.5 py-2 rounded-lg text-sm transition flex items-center space-x-2"
+            @click="activeTab = tab.id"
+          >
+            <component :is="tab.icon" class="w-4 h-4" />
+            <span>{{ tab.label }}</span>
+          </button>
+        </nav>
+
+        <!-- Server & Network Status Badge -->
+        <div class="flex items-center space-x-2 sm:space-x-3">
           <div
-            v-if="health && health.status === 'ok'"
-            class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+            v-if="health && health.status === 'ok' && isOnline"
+            class="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
           >
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Server Online (SQLite WAL)</span>
+            <span class="hidden sm:inline">Server Online (WAL)</span>
+            <span class="sm:hidden">Online</span>
           </div>
 
           <div
-            v-else-if="error"
-            class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"
+            v-else-if="error || !isOnline"
+            class="inline-flex items-center space-x-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200"
           >
             <AlertCircle class="w-3.5 h-3.5" />
-            <span>Terputus: {{ error }}</span>
+            <span class="hidden sm:inline">{{ error || 'Offline' }}</span>
+            <span class="sm:hidden">Offline</span>
           </div>
 
           <button
             :disabled="loading"
             title="Cek Status Server"
-            class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition"
+            class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition min-w-[40px] min-h-[40px] flex items-center justify-center"
             @click="checkHealth"
           >
             <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
@@ -91,22 +151,26 @@ const formatRupiah = val => {
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      <!-- Welcome & Action Banner -->
+    <!-- Main Content Area -->
+    <main
+      class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 pb-28 sm:pb-12"
+    >
+      <!-- Welcome & Mobile PWA Highlight Banner -->
       <div
-        class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden"
+        class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-5 sm:p-8 text-white shadow-lg relative overflow-hidden"
       >
         <div class="relative z-10 max-w-2xl space-y-2">
-          <span
-            class="inline-block px-3 py-0.5 rounded-full bg-emerald-600/60 text-emerald-100 text-xs font-medium tracking-wide uppercase"
-          >
-            Pondasi Siap
-          </span>
-          <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Selamat Datang di Neraca</h2>
-          <p class="text-emerald-100/90 text-sm sm:text-base leading-relaxed">
-            Struktur sistem Go + SQLite + Vue 3 berhasil diinisialisasi. Server backend dan database
-            SQLite siap untuk tahap pengembangan fitur finansial Anda.
+          <div class="flex items-center space-x-2">
+            <span
+              class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-600/60 text-emerald-100 text-xs font-medium tracking-wide uppercase"
+            >
+              PWA & Mobile Ready
+            </span>
+          </div>
+          <h2 class="text-xl sm:text-3xl font-bold tracking-tight">Selamat Datang di Neraca</h2>
+          <p class="text-emerald-100/90 text-xs sm:text-base leading-relaxed">
+            Aplikasi kini mendukung instalasi langsung ke layar HP Anda (PWA) dengan tampilan
+            responsif, koneksi ultra-ringan ke backend Go, dan basis data SQLite.
           </p>
         </div>
         <div class="absolute -right-8 -bottom-10 opacity-10 pointer-events-none">
@@ -114,13 +178,15 @@ const formatRupiah = val => {
         </div>
       </div>
 
-      <!-- Quick Metrics Overview (Skeleton Preview) -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- Quick Metrics Overview -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
         <!-- Total Net Worth -->
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div
+          class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4"
+        >
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
-              >Total Saldo (Net Worth)</span
+              >Total Saldo</span
             >
             <div
               class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"
@@ -129,18 +195,20 @@ const formatRupiah = val => {
             </div>
           </div>
           <div>
-            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {{ formatRupiah(0) }}
             </div>
-            <p class="text-xs text-slate-500 mt-1">Akumulasi dari seluruh kantong/rekening</p>
+            <p class="text-xs text-slate-500 mt-1">Akumulasi dari seluruh dompet</p>
           </div>
         </div>
 
         <!-- Pemasukan Bulan Ini -->
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div
+          class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4"
+        >
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
-              >Pemasukan Bulan Ini</span
+              >Pemasukan</span
             >
             <div
               class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"
@@ -149,18 +217,20 @@ const formatRupiah = val => {
             </div>
           </div>
           <div>
-            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {{ formatRupiah(0) }}
             </div>
-            <p class="text-xs text-slate-500 mt-1">Belum ada transaksi pemasukan</p>
+            <p class="text-xs text-slate-500 mt-1">Belum ada pemasukan bulan ini</p>
           </div>
         </div>
 
         <!-- Pengeluaran Bulan Ini -->
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div
+          class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4 sm:col-span-2 md:col-span-1"
+        >
           <div class="flex items-center justify-between">
             <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
-              >Pengeluaran Bulan Ini</span
+              >Pengeluaran</span
             >
             <div
               class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"
@@ -169,18 +239,18 @@ const formatRupiah = val => {
             </div>
           </div>
           <div>
-            <div class="text-3xl font-extrabold text-slate-900 tracking-tight">
+            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               {{ formatRupiah(0) }}
             </div>
-            <p class="text-xs text-slate-500 mt-1">Belum ada transaksi pengeluaran</p>
+            <p class="text-xs text-slate-500 mt-1">Belum ada pengeluaran bulan ini</p>
           </div>
         </div>
       </div>
 
-      <!-- Detail System Health & Next Development Steps -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Status Panel -->
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <!-- Detail Info Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+        <!-- Status Stack -->
+        <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
             <Activity class="w-4 h-4 text-emerald-600" />
             <span>Konektivitas & Stack</span>
@@ -191,15 +261,15 @@ const formatRupiah = val => {
               <span class="font-semibold text-slate-800">Golang (Chi Router v5)</span>
             </div>
             <div class="flex items-center justify-between py-2 border-b border-slate-100">
-              <span class="text-slate-500">Database Driver</span>
-              <span class="font-semibold text-slate-800">SQLite (Pure Go / WAL Mode)</span>
+              <span class="text-slate-500">Database Engine</span>
+              <span class="font-semibold text-slate-800">SQLite (Pure Go / WAL)</span>
             </div>
             <div class="flex items-center justify-between py-2 border-b border-slate-100">
-              <span class="text-slate-500">Frontend Client</span>
-              <span class="font-semibold text-slate-800">Vue 3 + Tailwind CSS + Vite</span>
+              <span class="text-slate-500">Client Runtime</span>
+              <span class="font-semibold text-slate-800">Vue 3 + Tailwind + PWA</span>
             </div>
             <div class="flex items-center justify-between py-2">
-              <span class="text-slate-500">Status API Endpoint</span>
+              <span class="text-slate-500">Status Endpoint</span>
               <span
                 v-if="health"
                 class="font-mono text-xs px-2 py-1 rounded bg-slate-100 text-slate-700"
@@ -211,46 +281,76 @@ const formatRupiah = val => {
           </div>
         </div>
 
-        <!-- Rencana Fitur Selanjutnya -->
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <!-- Rencana Fitur -->
+        <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
             <CheckCircle2 class="w-4 h-4 text-emerald-600" />
-            <span>Siap untuk Pengembangan Fitur</span>
+            <span>Fitur Siap Dikembangkan</span>
           </h3>
           <ul class="space-y-2.5 text-sm text-slate-600">
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
               <span
-                ><strong>Akun & Dompet:</strong> Manajemen rekening (BCA, Mandiri, Jago, GoPay,
-                Tunai, dsb).</span
+                ><strong>Akun & Dompet:</strong> Manajemen multi rekening (BCA, Mandiri, Cash,
+                GoPay).</span
               >
             </li>
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
               <span
-                ><strong>Transaksi:</strong> Form catat pemasukan, pengeluaran, dan transfer antar
-                akun.</span
+                ><strong>Transaksi:</strong> Input cepat pengeluaran, pemasukan, dan transfer.</span
               >
             </li>
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
               <span
-                ><strong>Kategori & Budget:</strong> Pengelompokan pos pengeluaran & monitoring
-                batas bulanan.</span
+                ><strong>Kategori & Anggaran:</strong> Pengelompokan pos dan batasan budget.</span
               >
             </li>
             <li class="flex items-start space-x-2">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span><strong>Visualisasi & Laporan:</strong> Grafik cashflow dan tren bulanan.</span>
+              <span
+                ><strong>Installable:</strong> Simpan ke Home Screen HP Anda via fitur PWA.</span
+              >
             </li>
           </ul>
         </div>
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+    <!-- Mobile Bottom Navigation Bar (Khusus Layar HP) -->
+    <nav
+      aria-label="Navigasi Bawah Mobile"
+      class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 pb-[env(safe-area-inset-bottom)] shadow-lg"
+    >
+      <div class="grid grid-cols-4 h-16">
+        <button
+          v-for="tab in navTabs"
+          :key="tab.id"
+          :class="[
+            activeTab === tab.id
+              ? 'text-emerald-600 font-semibold'
+              : 'text-slate-400 hover:text-slate-600 font-medium',
+          ]"
+          class="flex flex-col items-center justify-center space-y-1 transition text-[11px]"
+          @click="activeTab = tab.id"
+        >
+          <component
+            :is="tab.icon"
+            class="w-5 h-5 transition-transform"
+            :class="{ 'scale-110': activeTab === tab.id }"
+          />
+          <span>{{ tab.label }}</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Desktop Footer -->
+    <footer
+      class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 hidden sm:block"
+    >
       Neraca &copy; {{ new Date().getFullYear() }} — Ultra-lightweight Personal Financial Dashboard
+      (PWA)
     </footer>
   </div>
 </template>

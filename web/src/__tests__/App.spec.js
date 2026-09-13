@@ -24,17 +24,25 @@ describe('App.vue', () => {
     expect(wrapper.text()).toContain('Personal Financial Dashboard')
   })
 
+  it('merender navigasi mobile dan desktop dengan tab lengkap', async () => {
+    const wrapper = mount(App)
+    expect(wrapper.text()).toContain('Dashboard')
+    expect(wrapper.text()).toContain('Transaksi')
+    expect(wrapper.text()).toContain('Dompet')
+    expect(wrapper.text()).toContain('Anggaran')
+  })
+
   it('memanggil endpoint /api/health saat mounted dan menampilkan status online', async () => {
     const wrapper = mount(App)
     await flushPromises()
 
     expect(global.fetch).toHaveBeenCalledWith('/api/health')
-    expect(wrapper.text()).toContain('Server Online (SQLite WAL)')
+    expect(wrapper.text()).toContain('Online')
   })
 
   it('merender overview metric card dengan format Rupiah', async () => {
     const wrapper = mount(App)
-    expect(wrapper.text()).toContain('Total Saldo (Net Worth)')
+    expect(wrapper.text()).toContain('Total Saldo')
     expect(wrapper.text()).toContain('Rp')
   })
 })

@@ -53,4 +53,3 @@ func TestHandleHealth(t *testing.T) {
 		t.Errorf("expected database 'connected', got '%s'", res.Database)
 	}
 }
-

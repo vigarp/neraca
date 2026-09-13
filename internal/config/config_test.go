@@ -41,4 +41,3 @@ func TestLoad_CustomValues(t *testing.T) {
 		t.Errorf("expected custom Env 'production', got '%s'", cfg.Env)
 	}
 }
-
