@@ -133,7 +133,7 @@ const downloadBackup = () => {
   link.setAttribute('download', '')
   document.body.appendChild(link)
   link.click()
-  document.body.removeChild(link)
+  link.remove()
 }
 
 const openResetModal = () => {
