@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
   Wallet,
   ArrowDownLeft,
@@ -13,6 +13,10 @@ import {
   ArrowLeftRight,
   PieChart,
   WifiOff,
+  Clock,
+  Calendar,
+  Flame,
+  ShieldAlert,
 } from '@lucide/vue'
 import AccountsView from './views/AccountsView.vue'
 import TransactionsView from './views/TransactionsView.vue'
@@ -25,6 +29,23 @@ const activeTab = ref('dashboard')
 const netWorth = ref(0)
 const totalMonthlyExpense = ref(0)
 const totalMonthlyIncome = ref(0)
+const burnRate = ref({
+  next_payday_remain: 0,
+  next_payday_date: '',
+  cycle_start_date: '',
+  days_elapsed: 0,
+  remain_funds: 0,
+  grand_total_expenses: 0,
+  prospect_daily_limit: 0,
+  average_daily_expense: 0,
+  burn_rate_status: 'safe',
+  pillar_breakdown: {
+    needs: { total: 0, percentage: 0 },
+    wants: { total: 0, percentage: 0 },
+    savings: { total: 0, percentage: 0 },
+  },
+  category_breakdown: [],
+})
 
 const updateOnlineStatus = () => {
   isOnline.value = navigator.onLine
@@ -75,6 +96,37 @@ const fetchMonthlyTransactions = async () => {
   }
 }
 
+const fetchBurnRate = async () => {
+  try {
+    const res = await fetch('/api/analytics/burn-rate')
+    if (res.ok) {
+      const data = await res.json()
+      if (data && data.pillar_breakdown) {
+        burnRate.value = data
+      }
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const burnRateUsagePercent = computed(() => {
+  if (!burnRate.value.prospect_daily_limit || burnRate.value.prospect_daily_limit <= 0) return 0
+  return Math.round(
+    (burnRate.value.average_daily_expense / burnRate.value.prospect_daily_limit) * 100
+  )
+})
+
+const formatIndonesianDate = dateStr => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr + 'T00:00:00')
+  return date.toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 const switchTab = tabId => {
   activeTab.value = tabId
   refreshAll()
@@ -84,6 +136,7 @@ const refreshAll = () => {
   checkHealth()
   fetchNetWorth()
   fetchMonthlyTransactions()
+  fetchBurnRate()
 }
 
 onMounted(() => {
@@ -204,7 +257,7 @@ const navTabs = [
       <template v-if="activeTab === 'dashboard'">
         <!-- Welcome & Mobile PWA Highlight Banner -->
         <div
-          class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-5 sm:p-8 text-white shadow-lg relative overflow-hidden"
+          class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-5 sm:p-7 text-white shadow-lg relative overflow-hidden"
         >
           <div class="relative z-10 max-w-2xl space-y-2">
             <div class="flex items-center space-x-2">
@@ -215,13 +268,224 @@ const navTabs = [
               </span>
             </div>
             <h2 class="text-xl sm:text-3xl font-bold tracking-tight">Selamat Datang di Neraca</h2>
-            <p class="text-emerald-100/90 text-xs sm:text-base leading-relaxed">
+            <p class="text-emerald-100/90 text-xs sm:text-sm leading-relaxed">
               Aplikasi pendamping finansial pribadi berbasis prinsip 50-30-20 dan pemantauan batas
               belanja harian yang steril dari aset investasi Anda.
             </p>
           </div>
           <div class="absolute -right-8 -bottom-10 opacity-10 pointer-events-none">
             <PiggyBank class="w-72 h-72" />
+          </div>
+        </div>
+
+        <!-- HIGHLIGHT: MESIN HITUNG PROSPECT DAILY LIMIT & COUNTDOWN GAJIAN -->
+        <div class="space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <h2
+                class="text-lg sm:text-xl font-bold tracking-tight text-slate-900 flex items-center space-x-2"
+              >
+                <Clock class="w-5 h-5 text-emerald-600" />
+                <span>Siklus Gajian & Batas Belanja Harian</span>
+              </h2>
+              <p class="text-xs text-slate-500">
+                Formula pembagian kas operasional riil hingga tanggal gajian berikutnya
+              </p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span
+                class="text-xs px-2.5 py-1 rounded-full font-bold border"
+                :class="[
+                  burnRate.burn_rate_status === 'danger'
+                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                    : burnRate.burn_rate_status === 'warning'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                ]"
+              >
+                {{
+                  burnRate.burn_rate_status === 'danger'
+                    ? '⚠️ Status: Boros (> Ambang)'
+                    : burnRate.burn_rate_status === 'warning'
+                      ? '⚡ Status: Waspada'
+                      : '✅ Status: Aman (< Ambang)'
+                }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 4 Kartu Metrik Inti Spreadsheet -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- 1. Next Payday Remain -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Next Payday Remain
+                </span>
+                <div
+                  class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"
+                >
+                  <Calendar class="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  {{ burnRate.next_payday_remain }}
+                  <span class="text-sm font-semibold text-slate-500">Hari Lagi</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">
+                  Gajian: {{ formatIndonesianDate(burnRate.next_payday_date) }}
+                </p>
+              </div>
+            </div>
+
+            <!-- 2. Prospect Daily Limit -->
+            <div
+              class="bg-white p-5 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-50/40 to-white shadow-sm space-y-3"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                  Prospect Daily Limit
+                </span>
+                <div
+                  class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center"
+                >
+                  <ShieldAlert class="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-emerald-700 tracking-tight">
+                  {{ formatRupiah(burnRate.prospect_daily_limit) }}
+                </div>
+                <p class="text-xs text-emerald-800/80 mt-1 font-medium">
+                  Ambang batas belanja / hari
+                </p>
+              </div>
+            </div>
+
+            <!-- 3. Average Daily Expense -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Average Daily Expense
+                </span>
+                <div
+                  class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"
+                >
+                  <Flame class="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <div
+                  class="text-2xl sm:text-3xl font-extrabold tracking-tight"
+                  :class="[
+                    burnRate.burn_rate_status === 'danger'
+                      ? 'text-rose-600'
+                      : burnRate.burn_rate_status === 'warning'
+                        ? 'text-amber-600'
+                        : 'text-slate-900',
+                  ]"
+                >
+                  {{ formatRupiah(burnRate.average_daily_expense) }}
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Rata-rata riil belanja / hari</p>
+              </div>
+            </div>
+
+            <!-- 4. Remain Funds -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Remain Funds
+                </span>
+                <div
+                  class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"
+                >
+                  <Wallet class="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  {{ formatRupiah(burnRate.remain_funds) }}
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Kas operasional aktif (steril)</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bar Pembanding Laju Belanja (Burn Rate Gauge) -->
+          <div
+            class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2.5"
+          >
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs gap-1">
+              <span class="font-bold text-slate-800">
+                Tingkat Pemakaian Ambang Harian: {{ burnRateUsagePercent }}%
+              </span>
+              <span class="text-slate-500">
+                Rata-rata riil {{ formatRupiah(burnRate.average_daily_expense) }} / hari dari batas
+                aman {{ formatRupiah(burnRate.prospect_daily_limit) }} / hari
+              </span>
+            </div>
+            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                :style="{ width: `${Math.min(burnRateUsagePercent, 100)}%` }"
+                :class="[
+                  burnRate.burn_rate_status === 'danger'
+                    ? 'bg-rose-500'
+                    : burnRate.burn_rate_status === 'warning'
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500',
+                ]"
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakdown Pilar 50-30-20 Siklus Berjalan -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">
+              Distribusi Pengeluaran Siklus Berjalan (50-30-20)
+            </h3>
+            <span class="text-xs font-bold text-slate-500">
+              Grand Total: {{ formatRupiah(burnRate.grand_total_expenses) }}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- 50% Needs -->
+            <div class="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 space-y-1">
+              <div class="flex items-center justify-between text-xs text-blue-900 font-bold">
+                <span>🔵 50% Needs (Pokok)</span>
+                <span>{{ burnRate.pillar_breakdown?.needs?.percentage || 0 }}%</span>
+              </div>
+              <div class="text-base sm:text-lg font-extrabold text-blue-950">
+                {{ formatRupiah(burnRate.pillar_breakdown?.needs?.total || 0) }}
+              </div>
+            </div>
+
+            <!-- 30% Wants -->
+            <div class="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100 space-y-1">
+              <div class="flex items-center justify-between text-xs text-purple-900 font-bold">
+                <span>🟣 30% Wants (Gaya Hidup)</span>
+                <span>{{ burnRate.pillar_breakdown?.wants?.percentage || 0 }}%</span>
+              </div>
+              <div class="text-base sm:text-lg font-extrabold text-purple-950">
+                {{ formatRupiah(burnRate.pillar_breakdown?.wants?.total || 0) }}
+              </div>
+            </div>
+
+            <!-- 20% Savings -->
+            <div class="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100 space-y-1">
+              <div class="flex items-center justify-between text-xs text-emerald-900 font-bold">
+                <span>🟢 20% Savings (Tabungan)</span>
+                <span>{{ burnRate.pillar_breakdown?.savings?.percentage || 0 }}%</span>
+              </div>
+              <div class="text-base sm:text-lg font-extrabold text-emerald-950">
+                {{ formatRupiah(burnRate.pillar_breakdown?.savings?.total || 0) }}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -350,10 +614,10 @@ const navTabs = [
                 >
               </li>
               <li class="flex items-start space-x-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 flex-shrink-0"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
                 <span
-                  ><strong>Tahap 3:</strong> Mesin Hitung Prospect Daily Limit & Countdown
-                  Gajian.</span
+                  ><strong class="text-emerald-700">Tahap 3 (Selesai):</strong> Mesin Hitung
+                  Prospect Daily Limit & Countdown Gajian.</span
                 >
               </li>
               <li class="flex items-start space-x-2">

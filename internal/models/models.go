@@ -137,3 +137,38 @@ type TransactionsResponse struct {
 	TotalExpense float64       `json:"total_expense"`
 	TotalIncome  float64       `json:"total_income"`
 }
+
+type PillarExpenseStat struct {
+	Total      float64 `json:"total"`
+	Percentage float64 `json:"percentage"`
+}
+
+type PillarBreakdown struct {
+	Needs   PillarExpenseStat `json:"needs"`
+	Wants   PillarExpenseStat `json:"wants"`
+	Savings PillarExpenseStat `json:"savings"`
+}
+
+type CategoryExpenseBreakdown struct {
+	ID         int64   `json:"id"`
+	Name       string  `json:"name"`
+	Pillar     string  `json:"pillar"`
+	Icon       string  `json:"icon"`
+	Color      string  `json:"color"`
+	Total      float64 `json:"total"`
+	Percentage float64 `json:"percentage"`
+}
+
+type BurnRateAnalyticsResponse struct {
+	NextPaydayRemain    int                        `json:"next_payday_remain"`
+	NextPaydayDate      string                     `json:"next_payday_date"`
+	CycleStartDate      string                     `json:"cycle_start_date"`
+	DaysElapsed         int                        `json:"days_elapsed"`
+	RemainFunds         float64                    `json:"remain_funds"`
+	GrandTotalExpenses  float64                    `json:"grand_total_expenses"`
+	ProspectDailyLimit  float64                    `json:"prospect_daily_limit"`
+	AverageDailyExpense float64                    `json:"average_daily_expense"`
+	BurnRateStatus      string                     `json:"burn_rate_status"` // 'safe', 'warning', 'danger'
+	PillarBreakdown     PillarBreakdown            `json:"pillar_breakdown"`
+	CategoryBreakdown   []CategoryExpenseBreakdown `json:"category_breakdown"`
+}

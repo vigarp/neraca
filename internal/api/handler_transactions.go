@@ -141,7 +141,7 @@ func handleCreateTransaction(db *database.DB) http.HandlerFunc {
 			return
 		}
 		if req.TransactionDate == "" {
-			req.TransactionDate = time.Now().Format("2006-01-02")
+			req.TransactionDate = time.Now().Format(time.DateOnly)
 		}
 
 		tx, err := db.Begin()
@@ -202,7 +202,7 @@ func handleCreateTransfer(db *database.DB) http.HandlerFunc {
 			return
 		}
 		if req.TransactionDate == "" {
-			req.TransactionDate = time.Now().Format("2006-01-02")
+			req.TransactionDate = time.Now().Format(time.DateOnly)
 		}
 
 		tx, err := db.Begin()

@@ -75,6 +75,9 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 		api.Post("/transactions", handleCreateTransaction(db))
 		api.Post("/transactions/transfer", handleCreateTransfer(db))
 		api.Delete("/transactions/{id}", handleDeleteTransaction(db))
+
+		// Analytics (Payday countdown, prospect daily limit, burn rate)
+		api.Get("/analytics/burn-rate", handleGetBurnRateAnalytics(db))
 	})
 
 	// Static SPA Handler (jika ada embedded static files)
