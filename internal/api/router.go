@@ -18,6 +18,8 @@ func init() {
 	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
 }
 
+const headerCacheControl = "Cache-Control"
+
 func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler {
 	r := chi.NewRouter()
 
@@ -37,6 +39,16 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 		MaxAge:           300,
 	}))
 
+	// Security Headers (Lighthouse Best Practices)
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			next.ServeHTTP(w, r)
+		})
+	})
+
 	// API routes
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/health", handleHealth(db))
@@ -48,6 +60,17 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 
 		spaHandler := func(w http.ResponseWriter, r *http.Request) {
 			path := strings.TrimPrefix(r.URL.Path, "/")
+
+			// Caching Headers (Lighthouse Performance & PWA)
+			if strings.HasPrefix(path, "assets/") {
+				// Hashed Vite static assets aman di-cache 1 tahun
+				w.Header().Set(headerCacheControl, "public, max-age=31536000, immutable")
+			} else if path == "sw.js" {
+				// Service worker tidak boleh di-cache oleh browser agar auto-update bekerja
+				w.Header().Set(headerCacheControl, "no-cache, no-store, must-revalidate")
+			} else if path == "manifest.webmanifest" || path == "icon.svg" {
+				w.Header().Set(headerCacheControl, "public, max-age=86400")
+			}
 
 			// Cek apakah file ada di filesystem statis
 			if path != "" {
@@ -66,6 +89,7 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 			}
 			_ = indexFile.Close()
 
+			w.Header().Set(headerCacheControl, "no-cache")
 			r.URL.Path = "/"
 			fileServer.ServeHTTP(w, r)
 		}

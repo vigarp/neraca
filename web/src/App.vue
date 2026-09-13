@@ -106,6 +106,7 @@ const navTabs = [
           <button
             v-for="tab in navTabs"
             :key="tab.id"
+            type="button"
             :class="[
               activeTab === tab.id
                 ? 'bg-emerald-50 text-emerald-700 font-semibold'
@@ -140,9 +141,11 @@ const navTabs = [
           </div>
 
           <button
+            type="button"
+            aria-label="Segarkan status server"
             :disabled="loading"
             title="Cek Status Server"
-            class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition min-w-[40px] min-h-[40px] flex items-center justify-center"
+            class="p-2.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition min-w-[44px] min-h-[44px] flex items-center justify-center"
             @click="checkHealth"
           >
             <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
@@ -327,10 +330,11 @@ const navTabs = [
         <button
           v-for="tab in navTabs"
           :key="tab.id"
+          type="button"
           :class="[
             activeTab === tab.id
               ? 'text-emerald-600 font-semibold'
-              : 'text-slate-400 hover:text-slate-600 font-medium',
+              : 'text-slate-500 hover:text-slate-700 font-medium',
           ]"
           class="flex flex-col items-center justify-center space-y-1 transition text-[11px]"
           @click="activeTab = tab.id"
@@ -347,7 +351,7 @@ const navTabs = [
 
     <!-- Desktop Footer -->
     <footer
-      class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400 hidden sm:block"
+      class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 hidden sm:block"
     >
       Neraca &copy; {{ new Date().getFullYear() }} — Ultra-lightweight Personal Financial Dashboard
       (PWA)
