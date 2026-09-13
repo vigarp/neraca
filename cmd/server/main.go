@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,6 +19,11 @@ import (
 )
 
 func main() {
+	resetPassword := flag.Bool("reset-password", false, "Reset authentication credentials and return to initial setup wizard")
+	newPassword := flag.String("password", "", "Set a new password directly (used with -reset-password, minimum 6 characters)")
+	targetUser := flag.String("username", "", "Username to update when setting password directly")
+	flag.Parse()
+
 	cfg := config.Load()
 
 	// Inisialisasi Database SQLite
@@ -26,6 +32,14 @@ func main() {
 		log.Fatalf("Database connection error: %v", err)
 	}
 	defer db.Close()
+
+	// Jika flag -reset-password diberikan, jalankan reset lalu keluar
+	if *resetPassword {
+		if err := executeAuthReset(db, *newPassword, *targetUser, cfg.Port); err != nil {
+			log.Fatalf("Reset password error: %v", err)
+		}
+		return
+	}
 
 	// Inisialisasi Static Files (Embedded Vue 3 Dist)
 	staticFS, err := web.GetFS()
