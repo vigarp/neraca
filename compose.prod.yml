@@ -1,0 +1,26 @@
+services:
+  neraca:
+    image: ghcr.io/vigarp/neraca:latest
+    container_name: neraca
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=8088
+      - DB_PATH=/app/data/neraca.db
+      - ENV=production
+      - TZ=Asia/Jakarta
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.neraca.rule=Host(`finance.vigarp.web.id`)"
+      - "traefik.http.routers.neraca.entrypoints=websecure"
+      - "traefik.http.routers.neraca.tls=true"
+      - "traefik.http.routers.neraca.tls.certresolver=myresolver"
+      - "traefik.http.services.neraca.loadbalancer.server.port=8088"
+
+networks:
+  proxy:
+    external: true
+
