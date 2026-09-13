@@ -166,7 +166,7 @@ func determineBurnRateStatus(avgExpense, dailyLimit float64) string {
 
 func parseTargetDate(r *http.Request) time.Time {
 	if dateParam := r.URL.Query().Get("date"); dateParam != "" {
-		if t, err := time.Parse(time.DateOnly, dateParam); err == nil {
+		if t, err := time.ParseInLocation(time.DateOnly, dateParam, time.Local); err == nil {
 			return t
 		}
 	}
@@ -187,11 +187,47 @@ func calculateAverageExpense(grandTotal float64, daysElapsed int) float64 {
 	return math.Round((grandTotal/float64(daysElapsed))*100) / 100
 }
 
+func fetchEarliestExpenseDate(db *database.DB, startDate, endDate string) (string, error) {
+	var earliest string
+	query := `
+	SELECT COALESCE(MIN(transaction_date), '')
+	FROM transactions
+	WHERE type = 'expense'
+	  AND transaction_date >= ?
+	  AND transaction_date < ?;
+	`
+	err := db.QueryRow(query, startDate, endDate).Scan(&earliest)
+	return earliest, err
+}
+
+func determineEffectiveDaysElapsed(today, cycleStart time.Time, earliestExpenseDate string) int {
+	diffElapsed := int(today.Sub(cycleStart).Hours() / 24)
+	if diffElapsed <= 0 {
+		diffElapsed = 1
+	}
+
+	if earliestExpenseDate == "" {
+		return diffElapsed
+	}
+
+	earliest, err := time.ParseInLocation(time.DateOnly, earliestExpenseDate, today.Location())
+	if err != nil || !earliest.After(cycleStart) {
+		return diffElapsed
+	}
+
+	trackedDays := int(today.Sub(earliest).Hours()/24) + 1
+	if trackedDays > 0 && trackedDays < diffElapsed {
+		return trackedDays
+	}
+
+	return diffElapsed
+}
+
 func handleGetBurnRateAnalytics(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		now := parseTargetDate(r)
 		paydayDay := fetchPaydaySetting(db)
-		cycleStart, nextPayday, daysRemain, daysElapsed := calculatePaydayCycle(now, paydayDay)
+		cycleStart, nextPayday, daysRemain, _ := calculatePaydayCycle(now, paydayDay)
 
 		remainFunds, err := fetchOperationalBalance(db)
 		if err != nil && err != sql.ErrNoRows {
@@ -214,15 +250,18 @@ func handleGetBurnRateAnalytics(db *database.DB) http.HandlerFunc {
 			return
 		}
 
+		earliestExpenseDate, _ := fetchEarliestExpenseDate(db, startDateStr, endDateStr)
+		effectiveDaysElapsed := determineEffectiveDaysElapsed(now, cycleStart, earliestExpenseDate)
+
 		prospectDailyLimit := calculateDailyLimit(remainFunds, daysRemain)
-		avgDailyExpense := calculateAverageExpense(grandTotal, daysElapsed)
+		avgDailyExpense := calculateAverageExpense(grandTotal, effectiveDaysElapsed)
 		status := determineBurnRateStatus(avgDailyExpense, prospectDailyLimit)
 
 		res := models.BurnRateAnalyticsResponse{
 			NextPaydayRemain:    daysRemain,
 			NextPaydayDate:      endDateStr,
 			CycleStartDate:      startDateStr,
-			DaysElapsed:         daysElapsed,
+			DaysElapsed:         effectiveDaysElapsed,
 			RemainFunds:         remainFunds,
 			GrandTotalExpenses:  grandTotal,
 			ProspectDailyLimit:  prospectDailyLimit,

@@ -55,6 +55,36 @@ func TestAnalytics_PaydayCycleCalculations(t *testing.T) {
 	}
 }
 
+func TestAnalytics_DetermineEffectiveDaysElapsed(t *testing.T) {
+	cycleStart := time.Date(2026, 9, 5, 0, 0, 0, 0, time.Local)
+
+	// 1. Kasus Pengguna Baru: Mulai catat di tengah siklus (13 Sept), gajian tgl 5
+	today1 := time.Date(2026, 9, 13, 0, 0, 0, 0, time.Local)
+	elapsed1 := determineEffectiveDaysElapsed(today1, cycleStart, "2026-09-13")
+	if elapsed1 != 1 {
+		t.Fatalf("expected 1 day elapsed for new user starting today, got %d", elapsed1)
+	}
+
+	// 2. Kasus Hari ke-2: Belanja mulai kemarin (13 Sept), hari ini 14 Sept
+	today2 := time.Date(2026, 9, 14, 0, 0, 0, 0, time.Local)
+	elapsed2 := determineEffectiveDaysElapsed(today2, cycleStart, "2026-09-13")
+	if elapsed2 != 2 {
+		t.Fatalf("expected 2 days elapsed, got %d", elapsed2)
+	}
+
+	// 3. Kasus Pengguna Lama: Sudah catat sejak awal gajian (5 Sept)
+	elapsed3 := determineEffectiveDaysElapsed(today1, cycleStart, "2026-09-05")
+	if elapsed3 != 8 {
+		t.Fatalf("expected 8 days elapsed for full cycle tracking, got %d", elapsed3)
+	}
+
+	// 4. Kasus Belum Ada Transaksi Pengeluaran
+	elapsed4 := determineEffectiveDaysElapsed(today1, cycleStart, "")
+	if elapsed4 != 8 {
+		t.Fatalf("expected fallback to 8 calendar days when empty, got %d", elapsed4)
+	}
+}
+
 func TestAnalytics_BurnRateEndpoint(t *testing.T) {
 	router, db := setupTestRouter(t)
 	defer db.Close()
@@ -146,6 +176,17 @@ func TestAnalytics_BurnRateEndpoint(t *testing.T) {
 	expectedDailyLimit := 775000.0
 	if res.ProspectDailyLimit != expectedDailyLimit {
 		t.Fatalf("expected prospect daily limit %f, got %f", expectedDailyLimit, res.ProspectDailyLimit)
+	}
+
+	// Verifikasi Days Elapsed (Smart Tracked): 13 hari (dari pengeluaran terlama 2026-09-01 s.d. 2026-09-13)
+	if res.DaysElapsed != 13 {
+		t.Fatalf("expected 13 days elapsed, got %d", res.DaysElapsed)
+	}
+
+	// Verifikasi Average Daily Expense: 500.000 / 13 = 38461.54
+	expectedAvgExpense := 38461.54
+	if res.AverageDailyExpense != expectedAvgExpense {
+		t.Fatalf("expected avg daily expense %f, got %f", expectedAvgExpense, res.AverageDailyExpense)
 	}
 
 	// Status burn rate harus safe
