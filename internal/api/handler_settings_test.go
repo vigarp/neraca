@@ -1,8 +1,10 @@
 package api
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -75,3 +77,49 @@ func TestSettings_ResetFinancialData_Unauthorized(t *testing.T) {
 	}
 }
 
+func TestSettings_DownloadBackup_Success(t *testing.T) {
+	router, db := setupTestRouter(t)
+	defer db.Close()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/settings/backup", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d. Body: %s", rec.Code, rec.Body.String())
+	}
+
+	contentType := rec.Header().Get("Content-Type")
+	if contentType != "application/x-sqlite3" {
+		t.Errorf("expected Content-Type application/x-sqlite3, got %s", contentType)
+	}
+
+	contentDisposition := rec.Header().Get("Content-Disposition")
+	if !strings.Contains(contentDisposition, "attachment; filename=\"neraca_backup_") {
+		t.Errorf("unexpected Content-Disposition: %s", contentDisposition)
+	}
+
+	body := rec.Body.Bytes()
+	if len(body) == 0 {
+		t.Errorf("expected non-empty backup database file")
+	}
+
+	sqliteHeader := []byte("SQLite format 3\x00")
+	if !bytes.HasPrefix(body, sqliteHeader) {
+		t.Errorf("expected file to have SQLite header")
+	}
+}
+
+func TestSettings_DownloadBackup_Unauthorized(t *testing.T) {
+	router, _ := setupCleanTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/settings/backup", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401 Unauthorized, got %d", rec.Code)
+	}
+}

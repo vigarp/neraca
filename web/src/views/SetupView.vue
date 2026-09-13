@@ -69,7 +69,9 @@ const handleSetup = async () => {
         >
           <PiggyBank class="w-8 h-8" />
         </div>
-        <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">Selamat Datang di Neraca</h1>
+        <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">
+          Selamat Datang di Neraca
+        </h1>
         <p class="text-xs sm:text-sm text-slate-500 font-medium">
           Inisialisasi Akun Pengelola Utama
         </p>
@@ -77,7 +79,9 @@ const handleSetup = async () => {
 
       <!-- Setup Card -->
       <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs leading-relaxed flex items-start space-x-2.5">
+        <div
+          class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs leading-relaxed flex items-start space-x-2.5"
+        >
           <ShieldCheck class="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
           <span>
             Karena ini pertama kali dibuka, buat akun master Anda. Setelah akun dibuat, pendaftaran
@@ -101,7 +105,9 @@ const handleSetup = async () => {
               Username Pengelola
             </label>
             <div class="relative rounded-xl shadow-sm">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <div
+                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"
+              >
                 <User class="w-4 h-4" />
               </div>
               <input
@@ -122,7 +128,9 @@ const handleSetup = async () => {
               Password (Minimal 6 Karakter)
             </label>
             <div class="relative rounded-xl shadow-sm">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <div
+                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"
+              >
                 <Lock class="w-4 h-4" />
               </div>
               <input
@@ -143,7 +151,9 @@ const handleSetup = async () => {
               Konfirmasi Password
             </label>
             <div class="relative rounded-xl shadow-sm">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <div
+                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"
+              >
                 <Lock class="w-4 h-4" />
               </div>
               <input
@@ -177,4 +187,3 @@ const handleSetup = async () => {
     </div>
   </div>
 </template>
-

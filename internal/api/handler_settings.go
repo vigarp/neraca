@@ -2,8 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"neraca/internal/database"
 	"neraca/internal/models"
@@ -91,5 +95,45 @@ func handleResetFinancialData(db *database.DB) http.HandlerFunc {
 		writeJSON(w, http.StatusOK, map[string]string{
 			"message": "Data keuangan berhasil di-reset ke kondisi awal",
 		})
+	}
+}
+
+func handleDownloadBackup(db *database.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tempFile, err := os.CreateTemp("", "neraca-backup-*.db")
+		if err != nil {
+			http.Error(w, "Gagal membuat berkas sementara: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tempPath := tempFile.Name()
+		_ = tempFile.Close()
+		_ = os.Remove(tempPath)
+		defer os.Remove(tempPath)
+
+		sanitizedPath := strings.ReplaceAll(tempPath, "'", "''")
+		if _, err := db.Exec(fmt.Sprintf("VACUUM INTO '%s';", sanitizedPath)); err != nil {
+			http.Error(w, "Gagal melakukan backup database: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		backupFile, err := os.Open(tempPath)
+		if err != nil {
+			http.Error(w, "Gagal membaca berkas backup: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer backupFile.Close()
+
+		fileInfo, err := backupFile.Stat()
+		if err != nil {
+			http.Error(w, "Gagal membaca info berkas backup: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		filename := fmt.Sprintf("neraca_backup_%s.db", time.Now().Format("20060102_150405"))
+		w.Header().Set("Content-Type", "application/x-sqlite3")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+		w.Header().Set("Content-Length", strconv.FormatInt(fileInfo.Size(), 10))
+
+		http.ServeContent(w, r, filename, fileInfo.ModTime(), backupFile)
 	}
 }

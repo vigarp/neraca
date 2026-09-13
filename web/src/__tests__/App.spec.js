@@ -129,18 +129,43 @@ describe('App.vue', () => {
     expect(userMenuBtn.exists()).toBe(true)
     await userMenuBtn.trigger('click')
 
+    expect(wrapper.text()).toContain('Unduh Cadangan Database')
     expect(wrapper.text()).toContain('Reset Data Keuangan')
     expect(wrapper.text()).toContain('Keluar (Logout)')
 
     // Klik tombol Keluar
-    const logoutBtn = wrapper
-      .findAll('button')
-      .find(b => b.text().includes('Keluar (Logout)'))
+    const logoutBtn = wrapper.findAll('button').find(b => b.text().includes('Keluar (Logout)'))
     expect(logoutBtn).toBeDefined()
     await logoutBtn.trigger('click')
 
     expect(wrapper.text()).toContain('Konfirmasi Keluar')
     expect(wrapper.text()).toContain('Apakah Anda yakin ingin keluar dari Neraca?')
+  })
+
+  it('dapat memicu unduh cadangan database dari dropdown menu', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const userMenuBtn = wrapper.find('button[aria-label="Buka menu pengguna"]')
+    await userMenuBtn.trigger('click')
+
+    const downloadBtn = wrapper
+      .findAll('button')
+      .find(b => b.text().includes('Unduh Cadangan Database'))
+    expect(downloadBtn).toBeDefined()
+
+    const clickSpy = vi.fn()
+    const origCreateElement = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation(tagName => {
+      const el = origCreateElement(tagName)
+      if (tagName === 'a') {
+        el.click = clickSpy
+      }
+      return el
+    })
+
+    await downloadBtn.trigger('click')
+    expect(clickSpy).toHaveBeenCalled()
   })
 
   it('dapat membuka modal konfirmasi reset data dan memanggil API reset', async () => {
@@ -150,9 +175,7 @@ describe('App.vue', () => {
     const userMenuBtn = wrapper.find('button[aria-label="Buka menu pengguna"]')
     await userMenuBtn.trigger('click')
 
-    const resetBtn = wrapper
-      .findAll('button')
-      .find(b => b.text().includes('Reset Data Keuangan'))
+    const resetBtn = wrapper.findAll('button').find(b => b.text().includes('Reset Data Keuangan'))
     expect(resetBtn).toBeDefined()
     await resetBtn.trigger('click')
 

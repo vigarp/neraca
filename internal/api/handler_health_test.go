@@ -53,3 +53,36 @@ func TestHandleHealth(t *testing.T) {
 		t.Errorf("expected database 'connected', got '%s'", res.Database)
 	}
 }
+
+func TestRouter_GzipCompression(t *testing.T) {
+	tempDir := t.TempDir()
+	dbPath := filepath.Join(tempDir, "test_compress.db")
+
+	db, err := database.Connect(dbPath)
+	if err != nil {
+		t.Fatalf("failed to connect db: %v", err)
+	}
+	defer db.Close()
+
+	cfg := &config.Config{
+		Port:   "8088",
+		DBPath: dbPath,
+		Env:    "test",
+	}
+
+	router := NewRouter(cfg, db, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	rr := httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status code %d, got %d", http.StatusOK, rr.Code)
+	}
+
+	if enc := rr.Header().Get("Content-Encoding"); enc != "gzip" {
+		t.Errorf("expected Content-Encoding 'gzip', got '%s'", enc)
+	}
+}

@@ -82,7 +82,9 @@ const handleLogin = async () => {
               Username Pengelola
             </label>
             <div class="relative rounded-xl shadow-sm">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <div
+                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"
+              >
                 <User class="w-4 h-4" />
               </div>
               <input
@@ -103,7 +105,9 @@ const handleLogin = async () => {
               Password
             </label>
             <div class="relative rounded-xl shadow-sm">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <div
+                class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"
+              >
                 <Lock class="w-4 h-4" />
               </div>
               <input
@@ -160,4 +164,3 @@ const handleLogin = async () => {
     </div>
   </div>
 </template>
-

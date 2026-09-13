@@ -28,6 +28,7 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.Compress(5))
 
 	// CORS config (terutama saat development ketika Vite jalan di port 5173)
 	r.Use(cors.Handler(cors.Options{
@@ -74,6 +75,7 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 			protected.Get("/settings", handleGetSettings(db))
 			protected.Put("/settings", handleUpdateSettings(db))
 			protected.Post("/settings/reset-data", handleResetFinancialData(db))
+			protected.Get("/settings/backup", handleDownloadBackup(db))
 
 			// Categories (50-30-20 Framework)
 			protected.Get("/categories", handleGetCategories(db))

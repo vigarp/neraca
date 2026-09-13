@@ -199,4 +199,3 @@ type AuthStatusResponse struct {
 	Authenticated bool   `json:"authenticated"`
 	Username      string `json:"username,omitempty"`
 }
-

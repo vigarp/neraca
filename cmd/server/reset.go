@@ -79,4 +79,3 @@ func resetDirectPassword(db *database.DB, newPassword, targetUser, port string) 
 	fmt.Printf("👉 Silakan login di: http://localhost:%s\n", port)
 	return nil
 }
-

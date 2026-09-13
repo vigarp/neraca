@@ -49,4 +49,3 @@ describe('LoginView.vue', () => {
     expect(wrapper.emitted('login-success')[0]).toEqual(['vigarp'])
   })
 })
-

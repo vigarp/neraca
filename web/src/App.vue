@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Trash2,
   AlertTriangle,
+  Download,
 } from '@lucide/vue'
 import AccountsView from './views/AccountsView.vue'
 import TransactionsView from './views/TransactionsView.vue'
@@ -123,6 +124,16 @@ const openLogoutModal = () => {
 const confirmLogout = async () => {
   showLogoutModal.value = false
   await handleLogout()
+}
+
+const downloadBackup = () => {
+  isUserMenuOpen.value = false
+  const link = document.createElement('a')
+  link.href = '/api/settings/backup'
+  link.setAttribute('download', '')
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 const openResetModal = () => {
@@ -416,6 +427,21 @@ const navTabs = [
               </div>
 
               <div class="py-1">
+                <!-- Unduh Cadangan Database -->
+                <button
+                  type="button"
+                  class="w-full text-left px-3.5 py-2.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2.5 transition font-medium cursor-pointer"
+                  @click="downloadBackup"
+                >
+                  <Download class="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <span class="font-semibold text-slate-800 block">Unduh Cadangan Database</span>
+                    <span class="text-[10px] text-slate-400 block">Snapshot berkas .db SQLite</span>
+                  </div>
+                </button>
+
+                <div class="my-1 border-t border-slate-100"></div>
+
                 <!-- Reset Data Keuangan -->
                 <button
                   type="button"
@@ -935,9 +961,7 @@ const navTabs = [
       <div
         class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 space-y-4 border border-rose-100 animate-in fade-in zoom-in-95 duration-150"
       >
-        <div
-          class="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center"
-        >
+        <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
           <AlertTriangle class="w-5 h-5" />
         </div>
         <div class="space-y-1.5">
@@ -946,7 +970,8 @@ const navTabs = [
           </h3>
           <p class="text-xs text-slate-600 leading-relaxed">
             Tindakan ini akan
-            <strong>menghapus permanen seluruh rekening, transaksi, dan histori penilaian aset</strong
+            <strong
+              >menghapus permanen seluruh rekening, transaksi, dan histori penilaian aset</strong
             >. Kategori akan dikembalikan ke format default 50-30-20.
           </p>
           <div

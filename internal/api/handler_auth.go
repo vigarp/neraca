@@ -6,8 +6,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -23,6 +25,65 @@ const (
 	errUnauthorizedMsg       = "Unauthorized"
 	errInvalidCredentialsMsg = "Username atau password salah"
 )
+
+type loginRateLimiter struct {
+	mu          sync.Mutex
+	attempts    map[string][]time.Time
+	maxAttempts int
+	window      time.Duration
+}
+
+var globalLoginLimiter = newLoginRateLimiter(5, 1*time.Minute)
+
+func newLoginRateLimiter(max int, window time.Duration) *loginRateLimiter {
+	return &loginRateLimiter{
+		attempts:    make(map[string][]time.Time),
+		maxAttempts: max,
+		window:      window,
+	}
+}
+
+func (l *loginRateLimiter) isAllowed(ip string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-l.window)
+
+	valid := make([]time.Time, 0, len(l.attempts[ip]))
+	for _, t := range l.attempts[ip] {
+		if t.After(cutoff) {
+			valid = append(valid, t)
+		}
+	}
+	l.attempts[ip] = valid
+
+	return len(valid) < l.maxAttempts
+}
+
+func (l *loginRateLimiter) recordFailure(ip string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.attempts[ip] = append(l.attempts[ip], time.Now())
+}
+
+func (l *loginRateLimiter) reset(ip string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.attempts, ip)
+}
+
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return r.RemoteAddr
+}
 
 func hashToken(rawToken string) string {
 	sum := sha256.Sum256([]byte(rawToken))
@@ -218,6 +279,12 @@ func handleAuthSetup(db *database.DB) http.HandlerFunc {
 
 func handleAuthLogin(db *database.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		clientIP := getClientIP(r)
+		if !globalLoginLimiter.isAllowed(clientIP) {
+			http.Error(w, "Terlalu banyak percobaan login yang gagal. Silakan coba lagi dalam 1 menit.", http.StatusTooManyRequests)
+			return
+		}
+
 		var req models.LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Payload tidak valid", http.StatusBadRequest)
@@ -231,14 +298,18 @@ func handleAuthLogin(db *database.DB) http.HandlerFunc {
 			req.Username,
 		).Scan(&user.ID, &user.Username, &user.PasswordHash)
 		if err != nil {
+			globalLoginLimiter.recordFailure(clientIP)
 			http.Error(w, errInvalidCredentialsMsg, http.StatusUnauthorized)
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+			globalLoginLimiter.recordFailure(clientIP)
 			http.Error(w, errInvalidCredentialsMsg, http.StatusUnauthorized)
 			return
 		}
+
+		globalLoginLimiter.reset(clientIP)
 
 		duration := sessionDurationStandard
 		if req.RememberMe {
@@ -293,4 +364,3 @@ func authMiddleware(db *database.DB) func(http.Handler) http.Handler {
 		})
 	}
 }
-

@@ -58,6 +58,11 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Background Worker: Pembersihan sesi kedaluwarsa & pemeliharaan SQLite
+	cleanupCtx, cancelCleanup := context.WithCancel(context.Background())
+	defer cancelCleanup()
+	db.StartCleanupWorker(cleanupCtx)
+
 	// Jalankan server di goroutine
 	go func() {
 		log.Printf("✨ Neraca server is running on http://localhost:%s (ENV=%s)", cfg.Port, cfg.Env)

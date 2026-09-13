@@ -187,3 +187,48 @@ func TestAuth_MiddlewareProtection(t *testing.T) {
 		t.Fatalf("expected 200 OK with valid auth cookie, got %d: %s", rr.Code, rr.Body.String())
 	}
 }
+
+func TestAuth_LoginRateLimiting(t *testing.T) {
+	router, db := setupCleanTestRouter(t)
+	defer db.Close()
+
+	// 1. Setup akun
+	setupPayload := `{"username": "vigarp", "password": "supersecretpassword"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/setup", strings.NewReader(setupPayload))
+	req.Header.Set(headerContentType, mimeApplicationJSON)
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("setup failed: %d", rr.Code)
+	}
+
+	testIP := "203.0.113.199"
+	globalLoginLimiter.reset(testIP)
+	defer globalLoginLimiter.reset(testIP)
+
+	wrongLogin := `{"username": "vigarp", "password": "wrongpassword"}`
+
+	// 5 failed login attempts
+	for i := 1; i <= 5; i++ {
+		r := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongLogin))
+		r.Header.Set(headerContentType, mimeApplicationJSON)
+		r.Header.Set("X-Forwarded-For", testIP)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, r)
+
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("attempt %d: expected 401 Unauthorized, got %d", i, w.Code)
+		}
+	}
+
+	// 6th attempt should be blocked by rate limiter with 429 Too Many Requests
+	r := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongLogin))
+	r.Header.Set(headerContentType, mimeApplicationJSON)
+	r.Header.Set("X-Forwarded-For", testIP)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 Too Many Requests on 6th attempt, got %d: %s", w.Code, w.Body.String())
+	}
+}

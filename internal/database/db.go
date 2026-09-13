@@ -1,11 +1,13 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -21,8 +23,8 @@ func Connect(dbPath string) (*DB, error) {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 
-	// SQLite connection string dengan WAL mode dan busy timeout
-	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=synchronous(NORMAL)", dbPath)
+	// SQLite connection string dengan WAL mode, busy timeout, dan wal_autocheckpoint
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=synchronous(NORMAL)&_pragma=wal_autocheckpoint(1000)", dbPath)
 
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -243,4 +245,34 @@ func (db *DB) ResetFinancialData() error {
 	}
 
 	return db.seedDefaultCategories()
+}
+
+// StartCleanupWorker menjalankan pembersihan sesi kedaluwarsa dan optimasi SQLite secara berkala
+func (db *DB) StartCleanupWorker(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		// Jalankan sekali saat startup
+		db.cleanupExpiredSessions()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				db.cleanupExpiredSessions()
+			}
+		}
+	}()
+}
+
+func (db *DB) cleanupExpiredSessions() {
+	res, err := db.Exec("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP;")
+	if err == nil {
+		if aff, _ := res.RowsAffected(); aff > 0 {
+			log.Printf("Cleaned up %d expired sessions", aff)
+		}
+	}
+	_, _ = db.Exec("PRAGMA optimize;")
 }
