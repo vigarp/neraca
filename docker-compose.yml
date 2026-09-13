@@ -1,0 +1,17 @@
+services:
+  neraca:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: neraca:latest
+    container_name: neraca
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=8088
+      - DB_PATH=/app/data/neraca.db
+      - ENV=production
+      - TZ=Asia/Jakarta

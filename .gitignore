@@ -1,0 +1,38 @@
+# Binaries
+/bin/
+/neraca
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go build & test
+*.test
+*.out
+go.work
+
+# Frontend
+web/node_modules/
+web/dist/*
+!web/dist/index.html
+web/.env.local
+web/.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database & local data
+data/*.db
+data/*.db-shm
+data/*.db-wal
+!data/.gitkeep
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+.env
