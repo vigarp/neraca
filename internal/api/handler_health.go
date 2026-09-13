@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -29,7 +28,6 @@ func handleHealth(db *database.DB) http.HandlerFunc {
 			Database:  dbStatus,
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(res)
+		writeJSON(w, http.StatusOK, res)
 	}
 }

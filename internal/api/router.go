@@ -52,6 +52,17 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 	// API routes
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/health", handleHealth(db))
+
+		// Accounts & Wealth Management
+		api.Get("/accounts", handleGetAccounts(db))
+		api.Post("/accounts", handleCreateAccount(db))
+		api.Put("/accounts/{id}", handleUpdateAccount(db))
+		api.Delete("/accounts/{id}", handleDeleteAccount(db))
+		api.Post("/accounts/{id}/revalue", handleRevalueAccount(db))
+
+		// Settings (Payday date, monthly income)
+		api.Get("/settings", handleGetSettings(db))
+		api.Put("/settings", handleUpdateSettings(db))
 	})
 
 	// Static SPA Handler (jika ada embedded static files)

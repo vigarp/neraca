@@ -42,7 +42,7 @@ describe('App.vue', () => {
 
   it('merender overview metric card dengan format Rupiah', async () => {
     const wrapper = mount(App)
-    expect(wrapper.text()).toContain('Total Saldo')
+    expect(wrapper.text()).toContain('Total Net Worth')
     expect(wrapper.text()).toContain('Rp')
   })
 })

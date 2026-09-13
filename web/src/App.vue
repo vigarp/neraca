@@ -14,12 +14,14 @@ import {
   PieChart,
   WifiOff,
 } from '@lucide/vue'
+import AccountsView from './views/AccountsView.vue'
 
 const health = ref(null)
 const loading = ref(true)
 const error = ref(null)
 const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
 const activeTab = ref('dashboard')
+const netWorth = ref(0)
 
 const updateOnlineStatus = () => {
   isOnline.value = navigator.onLine
@@ -44,10 +46,33 @@ const checkHealth = async () => {
   }
 }
 
+const fetchNetWorth = async () => {
+  try {
+    const res = await fetch('/api/accounts')
+    if (res.ok) {
+      const data = await res.json()
+      netWorth.value = data.total_net_worth || 0
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const switchTab = tabId => {
+  activeTab.value = tabId
+  fetchNetWorth()
+}
+
+const refreshAll = () => {
+  checkHealth()
+  fetchNetWorth()
+}
+
 onMounted(() => {
   window.addEventListener('online', updateOnlineStatus)
   window.addEventListener('offline', updateOnlineStatus)
   checkHealth()
+  fetchNetWorth()
 })
 
 onUnmounted(() => {
@@ -62,7 +87,7 @@ const formatRupiah = val => {
     currency: 'IDR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(val)
+  }).format(val || 0)
 }
 
 const navTabs = [
@@ -113,7 +138,7 @@ const navTabs = [
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium',
             ]"
             class="px-3.5 py-2 rounded-lg text-sm transition flex items-center space-x-2"
-            @click="activeTab = tab.id"
+            @click="switchTab(tab.id)"
           >
             <component :is="tab.icon" class="w-4 h-4" />
             <span>{{ tab.label }}</span>
@@ -146,7 +171,7 @@ const navTabs = [
             :disabled="loading"
             title="Cek Status Server"
             class="p-2.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition min-w-[44px] min-h-[44px] flex items-center justify-center"
-            @click="checkHealth"
+            @click="refreshAll"
           >
             <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
           </button>
@@ -158,167 +183,207 @@ const navTabs = [
     <main
       class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8 pb-28 sm:pb-12"
     >
-      <!-- Welcome & Mobile PWA Highlight Banner -->
-      <div
-        class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-5 sm:p-8 text-white shadow-lg relative overflow-hidden"
-      >
-        <div class="relative z-10 max-w-2xl space-y-2">
-          <div class="flex items-center space-x-2">
-            <span
-              class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-600/60 text-emerald-100 text-xs font-medium tracking-wide uppercase"
-            >
-              PWA & Mobile Ready
-            </span>
+      <!-- TAB 1: DASHBOARD VIEW -->
+      <template v-if="activeTab === 'dashboard'">
+        <!-- Welcome & Mobile PWA Highlight Banner -->
+        <div
+          class="bg-gradient-to-r from-emerald-700 to-teal-800 rounded-2xl p-5 sm:p-8 text-white shadow-lg relative overflow-hidden"
+        >
+          <div class="relative z-10 max-w-2xl space-y-2">
+            <div class="flex items-center space-x-2">
+              <span
+                class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-600/60 text-emerald-100 text-xs font-medium tracking-wide uppercase"
+              >
+                PWA & Mobile Ready
+              </span>
+            </div>
+            <h2 class="text-xl sm:text-3xl font-bold tracking-tight">Selamat Datang di Neraca</h2>
+            <p class="text-emerald-100/90 text-xs sm:text-base leading-relaxed">
+              Aplikasi pendamping finansial pribadi berbasis prinsip 50-30-20 dan pemantauan batas
+              belanja harian yang steril dari aset investasi Anda.
+            </p>
           </div>
-          <h2 class="text-xl sm:text-3xl font-bold tracking-tight">Selamat Datang di Neraca</h2>
-          <p class="text-emerald-100/90 text-xs sm:text-base leading-relaxed">
-            Aplikasi kini mendukung instalasi langsung ke layar HP Anda (PWA) dengan tampilan
-            responsif, koneksi ultra-ringan ke backend Go, dan basis data SQLite.
+          <div class="absolute -right-8 -bottom-10 opacity-10 pointer-events-none">
+            <PiggyBank class="w-72 h-72" />
+          </div>
+        </div>
+
+        <!-- Quick Metrics Overview -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
+          <!-- Total Net Worth -->
+          <div
+            class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
+                >Total Net Worth</span
+              >
+              <div
+                class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"
+              >
+                <Wallet class="w-5 h-5" />
+              </div>
+            </div>
+            <div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                {{ formatRupiah(netWorth) }}
+              </div>
+              <p class="text-xs text-slate-500 mt-1">Total seluruh kas & portofolio aset pasif</p>
+            </div>
+          </div>
+
+          <!-- Pemasukan Bulan Ini -->
+          <div
+            class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
+                >Pemasukan</span
+              >
+              <div
+                class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"
+              >
+                <ArrowDownLeft class="w-5 h-5" />
+              </div>
+            </div>
+            <div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                {{ formatRupiah(0) }}
+              </div>
+              <p class="text-xs text-slate-500 mt-1">Belum ada transaksi pemasukan</p>
+            </div>
+          </div>
+
+          <!-- Pengeluaran Bulan Ini -->
+          <div
+            class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4 sm:col-span-2 md:col-span-1"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
+                >Pengeluaran</span
+              >
+              <div
+                class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"
+              >
+                <ArrowUpRight class="w-5 h-5" />
+              </div>
+            </div>
+            <div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                {{ formatRupiah(0) }}
+              </div>
+              <p class="text-xs text-slate-500 mt-1">Belum ada pengeluaran bulan ini</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detail Info Cards -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+          <!-- Status Stack -->
+          <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <Activity class="w-4 h-4 text-emerald-600" />
+              <span>Konektivitas & Stack</span>
+            </h3>
+            <div class="space-y-3 text-sm">
+              <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                <span class="text-slate-500">Backend Server</span>
+                <span class="font-semibold text-slate-800">Golang (Chi Router v5)</span>
+              </div>
+              <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                <span class="text-slate-500">Database Engine</span>
+                <span class="font-semibold text-slate-800">SQLite (Pure Go / WAL)</span>
+              </div>
+              <div class="flex items-center justify-between py-2 border-b border-slate-100">
+                <span class="text-slate-500">Client Runtime</span>
+                <span class="font-semibold text-slate-800">Vue 3 + Tailwind + PWA</span>
+              </div>
+              <div class="flex items-center justify-between py-2">
+                <span class="text-slate-500">Status Endpoint</span>
+                <span
+                  v-if="health"
+                  class="font-mono text-xs px-2 py-1 rounded bg-slate-100 text-slate-700"
+                >
+                  DB: {{ health.database }} | OK
+                </span>
+                <span v-else class="text-xs text-amber-600">Menghubungkan...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rencana Fitur Roadmap -->
+          <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <CheckCircle2 class="w-4 h-4 text-emerald-600" />
+              <span>Roadmap Tahapan Fitur</span>
+            </h3>
+            <ul class="space-y-2.5 text-sm text-slate-600">
+              <li class="flex items-start space-x-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
+                <span
+                  ><strong class="text-emerald-700">Tahap 1 (Selesai):</strong> Akun & Wealth
+                  Management (Pemisahan Kas vs Aset Pasif).</span
+                >
+              </li>
+              <li class="flex items-start space-x-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 flex-shrink-0"></span>
+                <span
+                  ><strong>Tahap 2:</strong> Kategori 50-30-20 & Log Transaksi Harian (Pokok,
+                  Pribadi, Investasi).</span
+                >
+              </li>
+              <li class="flex items-start space-x-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 flex-shrink-0"></span>
+                <span
+                  ><strong>Tahap 3:</strong> Mesin Hitung Prospect Daily Limit & Countdown
+                  Gajian.</span
+                >
+              </li>
+              <li class="flex items-start space-x-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-2 flex-shrink-0"></span>
+                <span><strong>Tahap 4:</strong> Visualisasi Dashboard Spreadsheet & Rekap.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </template>
+
+      <!-- TAB 2: ACCOUNTS / DOMPET & WEALTH VIEW -->
+      <template v-else-if="activeTab === 'accounts'">
+        <AccountsView :format-rupiah="formatRupiah" />
+      </template>
+
+      <!-- TAB 3: TRANSAKSI (TAHAP 2 PLACEHOLDER) -->
+      <template v-else-if="activeTab === 'transactions'">
+        <div class="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-3">
+          <div
+            class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto"
+          >
+            <ArrowLeftRight class="w-6 h-6" />
+          </div>
+          <h3 class="font-bold text-slate-800 text-lg">Modul Transaksi (Tahap 2)</h3>
+          <p class="text-xs text-slate-500 max-w-md mx-auto">
+            Fitur pencatatan pengeluaran harian, pemasukan gaji, dan transfer antar-akun akan kita
+            bangun di <strong>Tahap 2</strong>.
           </p>
         </div>
-        <div class="absolute -right-8 -bottom-10 opacity-10 pointer-events-none">
-          <PiggyBank class="w-72 h-72" />
-        </div>
-      </div>
+      </template>
 
-      <!-- Quick Metrics Overview -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-        <!-- Total Net Worth -->
-        <div
-          class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4"
-        >
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
-              >Total Saldo</span
-            >
-            <div
-              class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"
-            >
-              <Wallet class="w-5 h-5" />
-            </div>
+      <!-- TAB 4: ANGGARAN 50-30-20 (TAHAP 3/4 PLACEHOLDER) -->
+      <template v-else-if="activeTab === 'budgets'">
+        <div class="bg-white rounded-2xl p-8 border border-slate-200 text-center space-y-3">
+          <div
+            class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto"
+          >
+            <PieChart class="w-6 h-6" />
           </div>
-          <div>
-            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {{ formatRupiah(0) }}
-            </div>
-            <p class="text-xs text-slate-500 mt-1">Akumulasi dari seluruh dompet</p>
-          </div>
+          <h3 class="font-bold text-slate-800 text-lg">Modul Anggaran 50-30-20 (Tahap 3 & 4)</h3>
+          <p class="text-xs text-slate-500 max-w-md mx-auto">
+            Pembagian pilar anggaran 50% Pokok, 30% Pribadi, dan 20% Investasi akan
+            diimplementasikan pada tahap berikutnya.
+          </p>
         </div>
-
-        <!-- Pemasukan Bulan Ini -->
-        <div
-          class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4"
-        >
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
-              >Pemasukan</span
-            >
-            <div
-              class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"
-            >
-              <ArrowDownLeft class="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {{ formatRupiah(0) }}
-            </div>
-            <p class="text-xs text-slate-500 mt-1">Belum ada pemasukan bulan ini</p>
-          </div>
-        </div>
-
-        <!-- Pengeluaran Bulan Ini -->
-        <div
-          class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3 sm:space-y-4 sm:col-span-2 md:col-span-1"
-        >
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-slate-500"
-              >Pengeluaran</span
-            >
-            <div
-              class="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center"
-            >
-              <ArrowUpRight class="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              {{ formatRupiah(0) }}
-            </div>
-            <p class="text-xs text-slate-500 mt-1">Belum ada pengeluaran bulan ini</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Detail Info Cards -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
-        <!-- Status Stack -->
-        <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-            <Activity class="w-4 h-4 text-emerald-600" />
-            <span>Konektivitas & Stack</span>
-          </h3>
-          <div class="space-y-3 text-sm">
-            <div class="flex items-center justify-between py-2 border-b border-slate-100">
-              <span class="text-slate-500">Backend Server</span>
-              <span class="font-semibold text-slate-800">Golang (Chi Router v5)</span>
-            </div>
-            <div class="flex items-center justify-between py-2 border-b border-slate-100">
-              <span class="text-slate-500">Database Engine</span>
-              <span class="font-semibold text-slate-800">SQLite (Pure Go / WAL)</span>
-            </div>
-            <div class="flex items-center justify-between py-2 border-b border-slate-100">
-              <span class="text-slate-500">Client Runtime</span>
-              <span class="font-semibold text-slate-800">Vue 3 + Tailwind + PWA</span>
-            </div>
-            <div class="flex items-center justify-between py-2">
-              <span class="text-slate-500">Status Endpoint</span>
-              <span
-                v-if="health"
-                class="font-mono text-xs px-2 py-1 rounded bg-slate-100 text-slate-700"
-              >
-                DB: {{ health.database }} | OK
-              </span>
-              <span v-else class="text-xs text-amber-600">Menghubungkan...</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Rencana Fitur -->
-        <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-            <CheckCircle2 class="w-4 h-4 text-emerald-600" />
-            <span>Fitur Siap Dikembangkan</span>
-          </h3>
-          <ul class="space-y-2.5 text-sm text-slate-600">
-            <li class="flex items-start space-x-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span
-                ><strong>Akun & Dompet:</strong> Manajemen multi rekening (BCA, Mandiri, Cash,
-                GoPay).</span
-              >
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span
-                ><strong>Transaksi:</strong> Input cepat pengeluaran, pemasukan, dan transfer.</span
-              >
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span
-                ><strong>Kategori & Anggaran:</strong> Pengelompokan pos dan batasan budget.</span
-              >
-            </li>
-            <li class="flex items-start space-x-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0"></span>
-              <span
-                ><strong>Installable:</strong> Simpan ke Home Screen HP Anda via fitur PWA.</span
-              >
-            </li>
-          </ul>
-        </div>
-      </div>
+      </template>
     </main>
 
     <!-- Mobile Bottom Navigation Bar (Khusus Layar HP) -->
@@ -337,7 +402,7 @@ const navTabs = [
               : 'text-slate-500 hover:text-slate-700 font-medium',
           ]"
           class="flex flex-col items-center justify-center space-y-1 transition text-[11px]"
-          @click="activeTab = tab.id"
+          @click="switchTab(tab.id)"
         >
           <component
             :is="tab.icon"
