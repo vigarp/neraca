@@ -70,9 +70,10 @@ func NewRouter(cfg *config.Config, db *database.DB, staticFS fs.FS) http.Handler
 			protected.Delete("/accounts/{id}", handleDeleteAccount(db))
 			protected.Post("/accounts/{id}/revalue", handleRevalueAccount(db))
 
-			// Settings (Payday date, monthly income)
+			// Settings & Data Management
 			protected.Get("/settings", handleGetSettings(db))
 			protected.Put("/settings", handleUpdateSettings(db))
+			protected.Post("/settings/reset-data", handleResetFinancialData(db))
 
 			// Categories (50-30-20 Framework)
 			protected.Get("/categories", handleGetCategories(db))

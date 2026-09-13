@@ -120,4 +120,56 @@ describe('App.vue', () => {
     expect(wrapper.text()).toContain('Average Daily Expense')
     expect(wrapper.text()).toContain('Distribusi Pengeluaran Siklus Berjalan (50-30-20)')
   })
+
+  it('dapat membuka dropdown menu pengguna dan memicu modal konfirmasi logout', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const userMenuBtn = wrapper.find('button[aria-label="Buka menu pengguna"]')
+    expect(userMenuBtn.exists()).toBe(true)
+    await userMenuBtn.trigger('click')
+
+    expect(wrapper.text()).toContain('Reset Data Keuangan')
+    expect(wrapper.text()).toContain('Keluar (Logout)')
+
+    // Klik tombol Keluar
+    const logoutBtn = wrapper
+      .findAll('button')
+      .find(b => b.text().includes('Keluar (Logout)'))
+    expect(logoutBtn).toBeDefined()
+    await logoutBtn.trigger('click')
+
+    expect(wrapper.text()).toContain('Konfirmasi Keluar')
+    expect(wrapper.text()).toContain('Apakah Anda yakin ingin keluar dari Neraca?')
+  })
+
+  it('dapat membuka modal konfirmasi reset data dan memanggil API reset', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+
+    const userMenuBtn = wrapper.find('button[aria-label="Buka menu pengguna"]')
+    await userMenuBtn.trigger('click')
+
+    const resetBtn = wrapper
+      .findAll('button')
+      .find(b => b.text().includes('Reset Data Keuangan'))
+    expect(resetBtn).toBeDefined()
+    await resetBtn.trigger('click')
+
+    expect(wrapper.text()).toContain('Reset Seluruh Data Keuangan?')
+    expect(wrapper.text()).toContain('Akun Login Anda Tetap Aman')
+
+    // Klik Ya, Hapus & Reset Data
+    const confirmResetBtn = wrapper
+      .findAll('button')
+      .find(b => b.text().includes('Ya, Hapus & Reset Data'))
+    expect(confirmResetBtn).toBeDefined()
+    await confirmResetBtn.trigger('click')
+    await flushPromises()
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/settings/reset-data',
+      expect.objectContaining({ method: 'POST' })
+    )
+  })
 })

@@ -214,3 +214,33 @@ func (db *DB) seedDefaultCategories() error {
 
 	return tx.Commit()
 }
+
+// ResetFinancialData menghapus semua data transaksi, rekening, dan revaluasi aset,
+// serta mereset kategori ke default bawaan. Akun login (users, sessions) dan settings tetap utuh.
+func (db *DB) ResetFinancialData() error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	queries := []string{
+		"DELETE FROM transactions;",
+		"DELETE FROM asset_valuations;",
+		"DELETE FROM accounts;",
+		"DELETE FROM categories;",
+		"DELETE FROM sqlite_sequence WHERE name IN ('transactions', 'asset_valuations', 'accounts', 'categories');",
+	}
+
+	for _, q := range queries {
+		if _, err := tx.Exec(q); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return db.seedDefaultCategories()
+}

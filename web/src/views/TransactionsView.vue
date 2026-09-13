@@ -164,17 +164,20 @@ const formatDateHeader = dateStr => {
   yesterdayDate.setDate(yesterdayDate.getDate() - 1)
   const yesterday = yesterdayDate.toISOString().split('T')[0]
 
-  const dateObj = new Date(dateStr + 'T00:00:00')
-  const formatted = dateObj.toLocaleDateString('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  const cleanDate = (dateStr || '').split('T')[0]
+  const dateObj = new Date(cleanDate + 'T00:00:00')
+  const formatted = Number.isNaN(dateObj.getTime())
+    ? dateStr
+    : dateObj.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
 
-  if (dateStr === today) {
+  if (cleanDate === today) {
     return `Hari Ini — ${formatted}`
-  } else if (dateStr === yesterday) {
+  } else if (cleanDate === yesterday) {
     return `Kemarin — ${formatted}`
   }
   return formatted

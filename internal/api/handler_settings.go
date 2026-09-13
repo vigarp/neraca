@@ -80,3 +80,16 @@ func handleUpdateSettings(db *database.DB) http.HandlerFunc {
 		writeJSON(w, http.StatusOK, req)
 	}
 }
+
+func handleResetFinancialData(db *database.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := db.ResetFinancialData(); err != nil {
+			http.Error(w, "Gagal mereset data keuangan: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]string{
+			"message": "Data keuangan berhasil di-reset ke kondisi awal",
+		})
+	}
+}
