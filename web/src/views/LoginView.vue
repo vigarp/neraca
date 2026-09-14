@@ -35,6 +35,12 @@ const handleLogin = async () => {
       if (res.status === 401) {
         throw new Error('Username atau password salah')
       }
+      if (res.status === 403) {
+        throw new Error('Verifikasi Cloudflare diperlukan. Silakan muat ulang halaman.')
+      }
+      if (res.status === 429) {
+        throw new Error('Terlalu banyak percobaan login gagal. Silakan tunggu 1 menit.')
+      }
       throw new Error(`Gagal login (HTTP ${res.status})`)
     }
 

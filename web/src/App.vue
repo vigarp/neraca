@@ -35,6 +35,12 @@ const authStatus = ref({
   username: '',
 })
 const authChecking = ref(true)
+const isCloudflareBlocked = ref(false)
+
+const handleCloudflareVerify = () => {
+  window.location.href =
+    window.location.origin + window.location.pathname + '?cf_challenge=' + Date.now()
+}
 
 const health = ref(null)
 const loading = ref(true)
@@ -77,6 +83,11 @@ const checkHealth = async () => {
   error.value = null
   try {
     const res = await fetch('/api/health')
+    if (res.status === 403) {
+      isCloudflareBlocked.value = true
+      error.value = 'Cloudflare Blocked'
+      return
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     health.value = await res.json()
   } catch (err) {
@@ -90,6 +101,10 @@ const checkAuthStatus = async () => {
   authChecking.value = true
   try {
     const res = await fetch('/api/auth/status')
+    if (res.status === 403) {
+      isCloudflareBlocked.value = true
+      return
+    }
     if (res.ok) {
       const data = await res.json()
       authStatus.value = data
@@ -176,6 +191,10 @@ const handleLogout = async () => {
 const fetchNetWorth = async () => {
   try {
     const res = await fetch('/api/accounts')
+    if (res.status === 403) {
+      isCloudflareBlocked.value = true
+      return
+    }
     if (res.status === 401) {
       authStatus.value.authenticated = false
       return
@@ -193,6 +212,10 @@ const fetchMonthlyTransactions = async () => {
   try {
     const currentMonth = new Date().toISOString().slice(0, 7)
     const res = await fetch(`/api/transactions?month=${currentMonth}`)
+    if (res.status === 403) {
+      isCloudflareBlocked.value = true
+      return
+    }
     if (res.status === 401) {
       authStatus.value.authenticated = false
       return
@@ -210,6 +233,10 @@ const fetchMonthlyTransactions = async () => {
 const fetchBurnRate = async () => {
   try {
     const res = await fetch('/api/analytics/burn-rate')
+    if (res.status === 403) {
+      isCloudflareBlocked.value = true
+      return
+    }
     if (res.status === 401) {
       authStatus.value.authenticated = false
       return
@@ -284,9 +311,46 @@ const navTabs = [
 </script>
 
 <template>
+  <!-- Screen Cloudflare Managed Challenge Required -->
+  <div
+    v-if="isCloudflareBlocked && !authStatus.authenticated"
+    class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center"
+  >
+    <div
+      class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-amber-200 p-6 sm:p-8 space-y-5 animate-in fade-in zoom-in-95 duration-200"
+    >
+      <div
+        class="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200"
+      >
+        <ShieldAlert class="w-8 h-8" />
+      </div>
+      <div class="space-y-2">
+        <h2 class="text-lg font-bold text-slate-800">Verifikasi Keamanan Diperlukan</h2>
+        <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+          Cloudflare Managed Challenge mendeteksi browser Anda perlu menyelesaikan verifikasi
+          sebelum mengakses data Neraca.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-200 transition cursor-pointer flex items-center justify-center space-x-2"
+        @click="handleCloudflareVerify"
+      >
+        <RefreshCw class="w-4 h-4" />
+        <span>Selesaikan Verifikasi Sekarang</span>
+      </button>
+      <p class="text-[11px] text-slate-400">
+        Halaman akan dimuat ulang ke Cloudflare Turnstile untuk memperbarui tiket izin akses (<code
+          class="text-slate-600"
+          >cf_clearance</code
+        >).
+      </p>
+    </div>
+  </div>
+
   <!-- Loading Checking Auth State -->
   <div
-    v-if="authChecking"
+    v-else-if="authChecking"
     class="min-h-screen bg-slate-50 flex flex-col items-center justify-center space-y-3"
   >
     <div
@@ -305,6 +369,24 @@ const navTabs = [
 
   <!-- Main App Shell -->
   <div v-else class="min-h-screen bg-slate-50 flex flex-col text-slate-800">
+    <!-- Cloudflare Challenge Banner inside App -->
+    <div
+      v-if="isCloudflareBlocked"
+      class="bg-amber-600 text-white text-xs sm:text-sm font-medium px-4 py-2.5 flex items-center justify-between sticky top-0 z-50 shadow-md"
+    >
+      <div class="flex items-center space-x-2">
+        <ShieldAlert class="w-4 h-4 flex-shrink-0" />
+        <span>Sesi verifikasi Cloudflare kedaluwarsa. Sebagian data tidak dapat dimuat.</span>
+      </div>
+      <button
+        type="button"
+        class="px-3 py-1 bg-white text-amber-900 rounded-lg text-xs font-bold hover:bg-amber-50 transition cursor-pointer flex-shrink-0 ml-3"
+        @click="handleCloudflareVerify"
+      >
+        Verifikasi Ulang
+      </button>
+    </div>
+
     <!-- Offline Alert Banner -->
     <div
       v-if="!isOnline"

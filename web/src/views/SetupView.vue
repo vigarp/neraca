@@ -45,6 +45,9 @@ const handleSetup = async () => {
     })
 
     if (!res.ok) {
+      if (res.status === 403) {
+        throw new Error('Verifikasi Cloudflare diperlukan. Silakan muat ulang halaman.')
+      }
       const errText = await res.text()
       throw new Error(errText || `Gagal inisialisasi akun (HTTP ${res.status})`)
     }

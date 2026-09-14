@@ -195,4 +195,25 @@ describe('App.vue', () => {
       expect.objectContaining({ method: 'POST' })
     )
   })
+
+  it('menampilkan layar verifikasi jika API mengembalikan status 403 dari Cloudflare', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(url => {
+        if (url.includes('/api/auth/status')) {
+          return Promise.resolve({
+            status: 403,
+            ok: false,
+          })
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+      })
+    )
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Verifikasi Keamanan Diperlukan')
+    expect(wrapper.text()).toContain('Selesaikan Verifikasi Sekarang')
+  })
 })
