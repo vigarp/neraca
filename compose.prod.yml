@@ -11,16 +11,17 @@ services:
       - ENV=production
       - TZ=Asia/Jakarta
     networks:
-      - proxy
+      - edge_network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.neraca.rule=Host(`finance.vigarp.web.id`)"
+      - "traefik.http.routers.neraca.rule=Host(`neraca.vigarp.web.id`)"
       - "traefik.http.routers.neraca.entrypoints=websecure"
       - "traefik.http.routers.neraca.tls=true"
-      - "traefik.http.routers.neraca.tls.certresolver=myresolver"
+      - "traefik.http.routers.neraca.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.neraca.middlewares=security-headers@file"
       - "traefik.http.services.neraca.loadbalancer.server.port=8088"
 
 networks:
-  proxy:
+  edge_network:
     external: true
 
